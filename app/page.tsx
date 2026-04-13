@@ -4,15 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, RotateCcw, Target, ArrowLeft, User, History, Zap, Sparkles, Crown, Share2, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client (Optional - fallback to localStorage if keys are missing)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 type ScoreEntry = {
-  id?: string;
+  id?: number;
   alias: string;
   score: number;
   attempts: number;
@@ -41,27 +35,20 @@ export default function NumGenius() {
   useEffect(() => {
     async function fetchScores() {
       setIsLoadingScores(true);
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('scores')
-            .select('*')
-            .order('score', { ascending: false })
-            .limit(50);
-          
-          if (!error && data) {
-            setHighScores(data);
-          } else {
-            console.warn("Supabase error, falling back to local storage", error);
-            loadLocalScores();
-          }
-        } catch (e) {
-          loadLocalScores();
+      try {
+        const response = await fetch('/api/scores');
+        if (response.ok) {
+          const data = await response.json();
+          setHighScores(data);
+        } else {
+          throw new Error('API Error');
         }
-      } else {
+      } catch (e) {
+        console.warn("Cloudflare D1 error, falling back to local storage", e);
         loadLocalScores();
+      } finally {
+        setIsLoadingScores(false);
       }
-      setIsLoadingScores(false);
     }
 
     async function loadLocalScores() {
@@ -113,23 +100,25 @@ export default function NumGenius() {
       timestamp: new Date().toISOString(),
     };
 
-    if (supabase) {
-      try {
-        const { error } = await supabase.from('scores').insert([newScore]);
-        if (error) throw error;
-        
-        // Refresh scores from DB
-        const { data } = await supabase
-            .from('scores')
-            .select('*')
-            .order('score', { ascending: false })
-            .limit(50);
-        if (data) setHighScores(data);
-      } catch (e) {
-        console.error("DB Save failed, saving locally", e);
-        saveLocalScore(newScore);
+    try {
+      const response = await fetch('/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newScore),
+      });
+
+      if (response.ok) {
+        // Refresh scores from D1
+        const res = await fetch('/api/scores');
+        if (res.ok) {
+          const data = await res.json();
+          setHighScores(data);
+        }
+      } else {
+        throw new Error('Save Error');
       }
-    } else {
+    } catch (e) {
+      console.error("D1 Save failed, saving locally", e);
       saveLocalScore(newScore);
     }
   };
