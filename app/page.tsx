@@ -31,32 +31,20 @@ export default function NumNinja() {
   const [copied, setCopied] = useState(false);
   const [isLoadingScores, setIsLoadingScores] = useState(true);
 
-  // Load Scores
+  // Load Scores - Permanent LocalStorage only for stability
   useEffect(() => {
-    async function fetchScores() {
-      setIsLoadingScores(true);
-      try {
-        const response = await fetch('/api/scores');
-        if (response.ok) {
-          const data = await response.json();
-          setHighScores(data);
-        } else {
-          throw new Error('API Error');
-        }
-      } catch (e) {
-        console.warn("Cloudflare D1 error, falling back to local storage", e);
-        loadLocalScores();
-      } finally {
-        setIsLoadingScores(false);
-      }
-    }
-
-    async function loadLocalScores() {
+    function loadLocalScores() {
       const savedScores = localStorage.getItem('numninja_scores');
-      if (savedScores) setHighScores(JSON.parse(savedScores));
+      if (savedScores) {
+        try {
+          setHighScores(JSON.parse(savedScores));
+        } catch (e) {
+          console.error("Failed to parse scores");
+        }
+      }
+      setIsLoadingScores(false);
     }
-
-    fetchScores();
+    loadLocalScores();
   }, []);
 
   const triggerVictoryEffects = () => {
@@ -92,7 +80,7 @@ export default function NumNinja() {
     setGameState('game');
   };
 
-  const saveScore = async (finalScore: number, finalAttempts: number) => {
+  const saveScore = (finalScore: number, finalAttempts: number) => {
     const newScore: ScoreEntry = {
       alias: playerAlias,
       score: finalScore,
@@ -100,29 +88,6 @@ export default function NumNinja() {
       timestamp: new Date().toISOString(),
     };
 
-    try {
-      const response = await fetch('/api/scores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newScore),
-      });
-
-      if (response.ok) {
-        const res = await fetch('/api/scores');
-        if (res.ok) {
-          const data = await res.json();
-          setHighScores(data);
-        }
-      } else {
-        throw new Error('Save Error');
-      }
-    } catch (e) {
-      console.error("D1 Save failed, saving locally", e);
-      saveLocalScore(newScore);
-    }
-  };
-
-  const saveLocalScore = (newScore: ScoreEntry) => {
     const updatedScores = [...highScores, newScore].sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
     localStorage.setItem('numninja_scores', JSON.stringify(updatedScores));
@@ -188,7 +153,6 @@ export default function NumNinja() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
-      {/* Background Image Overlay */}
       <div className="fixed inset-0 -z-10">
         <img 
           src="/og-image.png" 
