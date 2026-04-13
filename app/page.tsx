@@ -348,7 +348,19 @@ export default function NumNinja() {
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full border border-slate-700 text-slate-400 text-xs font-bold">
                   <User className="w-3 h-3" /> {playerAlias}
                 </div>
-                <div className="text-xl font-black text-blue-500 italic tracking-tighter">NUMNINJA</div>
+                
+                <div className="flex items-center gap-3">
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={shareToFacebook}
+                    className="p-2 bg-slate-800/50 hover:bg-blue-600/20 text-slate-400 hover:text-blue-400 rounded-full border border-slate-700 transition-all"
+                    title="Share to Facebook"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </motion.button>
+                  <div className="text-xl font-black text-blue-500 italic tracking-tighter">NUMNINJA</div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
