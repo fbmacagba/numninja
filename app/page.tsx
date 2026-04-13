@@ -13,7 +13,7 @@ type ScoreEntry = {
   timestamp: string;
 };
 
-export default function NumGenius() {
+export default function NumNinja() {
   // Game State
   const [gameState, setGameState] = useState<'login' | 'game' | 'ranking'>('login');
   const [playerAlias, setPlayerAlias] = useState('');
@@ -21,7 +21,7 @@ export default function NumGenius() {
   const [guess, setGuess] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [score, setScore] = useState(1000);
-  const [feedback, setFeedback] = useState({ message: 'Welcome to NumGenius! Guess a number between 1-100.', type: 'info' });
+  const [feedback, setFeedback] = useState({ message: 'Welcome to NumNinja! Guess a number between 1-100.', type: 'info' });
   const [previousGuesses, setPreviousGuesses] = useState<number[]>([]);
   const [highScores, setHighScores] = useState<ScoreEntry[]>([]);
   const [startTime, setStartTime] = useState(0);
@@ -52,7 +52,7 @@ export default function NumGenius() {
     }
 
     async function loadLocalScores() {
-      const savedScores = localStorage.getItem('numgenius_scores');
+      const savedScores = localStorage.getItem('numninja_scores');
       if (savedScores) setHighScores(JSON.parse(savedScores));
     }
 
@@ -108,7 +108,6 @@ export default function NumGenius() {
       });
 
       if (response.ok) {
-        // Refresh scores from D1
         const res = await fetch('/api/scores');
         if (res.ok) {
           const data = await res.json();
@@ -126,7 +125,7 @@ export default function NumGenius() {
   const saveLocalScore = (newScore: ScoreEntry) => {
     const updatedScores = [...highScores, newScore].sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
-    localStorage.setItem('numgenius_scores', JSON.stringify(updatedScores));
+    localStorage.setItem('numninja_scores', JSON.stringify(updatedScores));
   };
 
   const handleGuess = (e: React.FormEvent) => {
@@ -181,18 +180,22 @@ export default function NumGenius() {
   };
 
   const copyShareText = () => {
-    const text = `🎯 I just cracked the code on NumGenius!\n🏆 Score: ${score}\n🎯 Attempts: ${attempts}\n\nCan you beat me? Try it here: ${window.location.href}`;
+    const text = `🎯 I just cracked the code on NumNinja!\n🏆 Score: ${score}\n🎯 Attempts: ${attempts}\n\nCan you beat me? Try it here: ${window.location.href}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-blue-500/30 overflow-x-hidden">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/2 -right-24 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl animate-pulse delay-700" />
-        <div className="absolute -bottom-24 left-1/3 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl animate-pulse delay-1000" />
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
+      {/* Background Image Overlay */}
+      <div className="fixed inset-0 -z-10">
+        <img 
+          src="/og-image.png" 
+          className="w-full h-full object-cover opacity-30" 
+          alt="Game Background" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0f172a]/40 via-[#0f172a]/80 to-[#0f172a]" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -217,7 +220,7 @@ export default function NumGenius() {
               </motion.div>
               
               <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent tracking-tight">
-                NumGenius
+                NumNinja
               </h1>
               <p className="text-slate-400 mb-8 font-medium">Can you crack the secret code?</p>
               
@@ -345,7 +348,7 @@ export default function NumGenius() {
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full border border-slate-700 text-slate-400 text-xs font-bold">
                   <User className="w-3 h-3" /> {playerAlias}
                 </div>
-                <div className="text-xl font-black text-blue-500 italic tracking-tighter">NUMGENIUS</div>
+                <div className="text-xl font-black text-blue-500 italic tracking-tighter">NUMNINJA</div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
