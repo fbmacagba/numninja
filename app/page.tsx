@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, RotateCcw, Target, ArrowLeft, User, History, Zap } from 'lucide-react';
+import { Trophy, RotateCcw, Target, ArrowLeft, User, History, Zap, Sparkles, Crown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 
 type ScoreEntry = {
   alias: string;
@@ -23,16 +25,22 @@ export default function NumGenius() {
   const [highScores, setHighScores] = useState<ScoreEntry[]>([]);
   const [startTime, setStartTime] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [gameWon, setGameWon] = useState(false);
+  const [shake, setShake] = useState(false);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Initialize game
   useEffect(() => {
     const savedScores = localStorage.getItem('numgenius_scores');
-    if (savedScores) {
-      setHighScores(JSON.parse(savedScores));
-    }
+    if (savedScores) setHighScores(JSON.parse(savedScores));
   }, []);
+
+  const triggerConfetti = () => {
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#3498DB', '#FFD700', '#2ECC71', '#E74C3C']
+    });
+  };
 
   const startNewGame = () => {
     setSecretNumber(Math.floor(Math.random() * 100) + 1);
@@ -41,11 +49,9 @@ export default function NumGenius() {
     setPreviousGuesses([]);
     setGuess('');
     setIsGameOver(false);
+    setGameWon(false);
     setStartTime(Date.now());
-    setFeedback({ 
-      message: `Welcome, ${playerAlias}! Guess a number between 1-100.`, 
-      type: 'info' 
-    });
+    setFeedback({ message: `Ready, ${playerAlias}! Guess a number between 1-100.`, type: 'info' });
     setGameState('game');
   };
 
@@ -56,10 +62,7 @@ export default function NumGenius() {
       attempts: finalAttempts,
       timestamp: new Date().toISOString(),
     };
-    const updatedScores = [...highScores, newScore]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 50);
-    
+    const updatedScores = [...highScores, newScore].sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
     localStorage.setItem('numgenius_scores', JSON.stringify(updatedScores));
   };
@@ -69,7 +72,7 @@ export default function NumGenius() {
     const numGuess = parseInt(guess);
 
     if (isNaN(numGuess) || numGuess < 1 || numGuess > 100) {
-      setFeedback({ message: 'Please enter a valid number between 1 and 100.', type: 'warning' });
+      setFeedback({ message: 'Enter a valid number (1-100)!', type: 'warning' });
       return;
     }
 
@@ -77,7 +80,6 @@ export default function NumGenius() {
     setAttempts(newAttempts);
     setPreviousGuesses(prev => [...prev, numGuess]);
 
-    // Calculate score reduction (similar to original logic)
     const timeElapsed = (Date.now() - startTime) / 1000;
     const timePenalty = Math.floor(timeElapsed / 10);
     const newScore = Math.max(100, 1000 - (newAttempts * 50) - timePenalty);
@@ -85,224 +87,308 @@ export default function NumGenius() {
 
     if (numGuess === secretNumber) {
       setIsGameOver(true);
-      const winMsg = `🎉 CONGRATULATIONS!\n\nYou guessed the number ${secretNumber}!\nAttempts: ${newAttempts}\nFinal Score: ${newScore}`;
-      setFeedback({ message: winMsg, type: 'success' });
+      setGameWon(true);
+      triggerConfetti();
+      setFeedback({ message: `🎉 BOOM! You nailed it! The number was ${secretNumber}!`, type: 'success' });
       saveScore(newScore, newAttempts);
     } else if (newAttempts >= 10) {
       setIsGameOver(true);
-      setFeedback({ message: `😢 GAME OVER!\n\nThe number was ${secretNumber}. Better luck next time!`, type: 'warning' });
-    } else if (numGuess < secretNumber) {
-      setFeedback({ message: '⬆️ Too low! Try a higher number.', type: 'warning' });
+      setGameWon(false);
+      setFeedback({ message: `😢 Out of attempts! The secret number was ${secretNumber}.`, type: 'warning' });
     } else {
-      setFeedback({ message: '⬇️ Too high! Try a lower number.', type: 'warning' });
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+      if (numGuess < secretNumber) {
+        setFeedback({ message: '⬆️ TOO LOW! Go higher!', type: 'warning' });
+      } else {
+        setFeedback({ message: '⬇️ TOO HIGH! Go lower!', type: 'warning' });
+      }
     }
 
-    // Hint at 5 attempts
-    if (newAttempts === 5) {
-      const hint = `💡 Hint: The number is ${secretNumber % 2 === 0 ? 'even!' : 'odd!'}`;
-      setTimeout(() => setFeedback({ message: hint, type: 'info' }), 2000);
+    if (newAttempts === 5 && numGuess !== secretNumber) {
+      const hint = `💡 HINT: The number is ${secretNumber % 2 === 0 ? 'EVEN' : 'ODD'}!`;
+      setTimeout(() => setFeedback({ message: hint, type: 'info' }), 1500);
     }
 
     setGuess('');
   };
 
-  // Render Login Screen
-  if (gameState === 'login') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-dark-slate p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-primary-blue/30">
-          <div className="flex justify-center mb-4">
-            <Target className="w-16 h-16 text-primary-blue animate-bounce" />
-          </div>
-          <h1 className="text-3xl font-bold mb-6 text-light-gray">Welcome to NumGenius!</h1>
-          
-          <div className="mb-6">
-            <label className="block text-sm mb-2 text-light-gray/70">Enter your player alias:</label>
-            <input 
-              type="text" 
-              value={playerAlias}
-              onChange={(e) => setPlayerAlias(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && playerAlias && startNewGame()}
-              className="w-full p-3 rounded bg-primary-dark border border-primary-blue/50 text-white text-center text-xl focus:ring-2 focus:ring-primary-blue outline-none"
-              placeholder="Player 1"
-            />
-          </div>
-
-          <button 
-            onClick={() => playerAlias && startNewGame()}
-            disabled={!playerAlias}
-            className="w-full py-3 bg-accent-red hover:bg-red-600 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-lg"
-          >
-            <Zap className="w-5 h-5" /> Start Game
-          </button>
-
-          {highScores.length > 0 && (
-            <div className="mt-10 pt-6 border-t border-primary-blue/20">
-              <h2 className="text-xl font-bold text-warning-orange mb-4 flex items-center justify-center gap-2">
-                <Trophy className="w-5 h-5" /> Current Champions
-              </h2>
-              <div className="space-y-2">
-                {highScores.slice(0, 3).map((s, i) => (
-                  <div key={i} className="flex justify-between p-2 rounded bg-primary-dark/50 text-sm">
-                    <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} {s.alias}</span>
-                    <span className="font-bold">{s.score}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+  return (
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-1/2 -right-24 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl animate-pulse delay-700" />
+        <div className="absolute -bottom-24 left-1/3 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
-    );
-  }
 
-  // Render Ranking Screen
-  if (gameState === 'ranking') {
-    return (
-      <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
-        <div className="max-w-2xl w-full">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Trophy className="text-warning-orange a-bounce" /> 
-              NUMGENIUS LEADERBOARD
-            </h1>
-            <button 
-              onClick={() => setGameState('game')}
-              className="p-2 bg-warning-orange text-white rounded-lg flex items-center gap-2 hover:bg-orange-600 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to Game
-            </button>
-          </div>
-
-          <div className="bg-dark-slate rounded-xl overflow-hidden shadow-xl border border-primary-blue/20">
-            <div className="grid grid-cols-4 bg-primary-dark p-4 font-bold text-light-gray border-b border-primary-blue/20">
-              <div>Rank</div>
-              <div>Player</div>
-              <div>Score</div>
-              <div>Attempts</div>
-            </div>
-            <div className="max-h-[60vh] overflow-y-auto">
-              {highScores.length === 0 ? (
-                <div className="p-10 text-center text-light-gray/50">
-                  No scores yet! Be the first champion! 🏆
+      <AnimatePresence mode="wait">
+        {gameState === 'login' && (
+          <motion.div 
+            key="login"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="min-h-screen flex items-center justify-center p-6 relative z-10"
+          >
+            <div className="bg-slate-800/40 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-slate-700/50">
+              <motion.div 
+                initial={{ rotate: -10, scale: 0.8 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200 }}
+                className="flex justify-center mb-6"
+              >
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/40">
+                  <Target className="w-12 h-12 text-white" />
                 </div>
-              ) : (
-                highScores.map((s, i) => (
-                  <div 
-                    key={i} 
-                    className={`grid grid-cols-4 p-4 border-b border-primary-blue/10 transition-colors ${s.alias === playerAlias ? 'bg-primary-blue/30' : 'hover:bg-primary-dark/50'}`}
-                  >
-                    <div className="font-bold">
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
-                    </div>
-                    <div className="truncate">{s.alias}</div>
-                    <div className="font-bold text-primary-blue">{s.score}</div>
-                    <div>{s.attempts}</div>
+              </motion.div>
+              
+              <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent tracking-tight">
+                NumGenius
+              </h1>
+              <p className="text-slate-400 mb-8 font-medium">Can you crack the secret code?</p>
+              
+              <div className="mb-8 text-left">
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-500 ml-1">Player Alias</label>
+                <input 
+                  type="text" 
+                  value={playerAlias}
+                  onChange={(e) => setPlayerAlias(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && playerAlias && startNewGame()}
+                  className="w-full p-4 rounded-2xl bg-slate-900/50 border border-slate-700 text-white text-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
+                  placeholder="Enter your name..."
+                />
+              </div>
+
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => playerAlias && startNewGame()}
+                disabled={!playerAlias}
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-xl shadow-blue-900/20"
+              >
+                <Zap className="w-5 h-5 fill-current" /> Start Adventure
+              </motion.button>
+
+              {highScores.length > 0 && (
+                <div className="mt-10 pt-8 border-t border-slate-700/50">
+                  <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
+                    <Crown className="w-4 h-4 text-yellow-500" /> Hall of Fame
+                  </h2>
+                  <div className="space-y-3">
+                    {highScores.slice(0, 3).map((s, i) => (
+                      <motion.div 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        key={i} 
+                        className="flex justify-between p-3 rounded-xl bg-slate-900/30 border border-slate-800/50 text-sm"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                          <span className="font-medium text-slate-300">{s.alias}</span>
+                        </span>
+                        <span className="font-black text-blue-400">{s.score}</span>
+                      </motion.div>
+                    ))}
                   </div>
-                ))
+                </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+          </motion.div>
+        )}
 
-  // Render Game Screen
-  return (
-    <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
-      <div className="max-w-md w-full flex flex-col gap-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2 text-light-gray/80">
-            <User className="w-4 h-4" /> {playerAlias}
-          </div>
-          <h1 className="text-2xl font-bold text-primary-blue">🎯 NUMGENIUS</h1>
-        </div>
-
-        {/* Stats Panel */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-dark-slate p-4 rounded-xl border border-primary-blue/30 flex flex-col items-center">
-            <span className="text-xs text-light-gray/60 uppercase font-bold">Score</span>
-            <span className="text-2xl font-bold text-light-gray flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-warning-orange" /> {score}
-            </span>
-          </div>
-          <div className="bg-dark-slate p-4 rounded-xl border border-primary-blue/30 flex flex-col items-center">
-            <span className="text-xs text-light-gray/60 uppercase font-bold">Attempts</span>
-            <span className="text-2xl font-bold text-light-gray flex items-center gap-2">
-              <Target className="w-5 h-5 text-accent-red" /> {attempts}/10
-            </span>
-          </div>
-        </div>
-
-        {/* Main Input Section */}
-        <div className="bg-dark-slate p-6 rounded-2xl shadow-xl border border-primary-blue/20 text-center">
-          <p className="mb-4 text-light-gray/80">Guess a number between 1 and 100</p>
-          
-          <form onSubmit={handleGuess} className="flex flex-col gap-4">
-            <input 
-              type="number" 
-              value={guess}
-              onChange={(e) => setGuess(e.target.value)}
-              disabled={isGameOver}
-              className="text-center text-3xl p-3 rounded-lg bg-primary-dark border-2 border-primary-blue/50 text-white focus:ring-4 focus:ring-primary-blue/30 outline-none"
-              placeholder="?"
-              autoFocus
-            />
-            
-            <div className="grid grid-cols-1 gap-3">
-              <button 
-                type="submit"
-                disabled={isGameOver}
-                className="py-3 bg-primary-blue hover:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
-              >
-                <Target className="w-5 h-5" /> Make Guess
-              </button>
-              <div className="grid grid-cols-2 gap-3">
+        {gameState === 'ranking' && (
+          <motion.div 
+            key="ranking"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-screen p-6 md:p-12 flex flex-col items-center relative z-10"
+          >
+            <div className="max-w-2xl w-full">
+              <div className="flex justify-between items-center mb-10">
+                <div className="flex items-center gap-3">
+                  <Trophy className="text-yellow-500 w-8 h-8" /> 
+                  <h1 className="text-3xl font-black tracking-tight">Leaderboard</h1>
+                </div>
                 <button 
-                  type="button"
-                  onClick={() => setGameState('ranking')}
-                  className="py-3 bg-success-green hover:bg-green-600 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                  onClick={() => setGameState('game')}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center gap-2 transition-all border border-slate-700"
                 >
-                  <Trophy className="w-4 h-4" /> Ranking
-                </button>
-                <button 
-                  type="button"
-                  onClick={startNewGame}
-                  className="py-3 bg-accent-red hover:bg-red-600 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <RotateCcw className="w-4 h-4" /> Reset
+                  <ArrowLeft className="w-4 h-4" /> Back
                 </button>
               </div>
+
+              <div className="bg-slate-800/40 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50">
+                <div className="grid grid-cols-4 bg-slate-900/50 p-5 font-bold text-slate-500 text-xs uppercase tracking-widest border-b border-slate-700/50">
+                  <div>Rank</div>
+                  <div>Player</div>
+                  <div className="text-right">Score</div>
+                  <div className="text-right">Tries</div>
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {highScores.length === 0 ? (
+                    <div className="p-16 text-center text-slate-500">
+                      <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                      <p>No legends yet. Be the first!</p>
+                    </div>
+                  ) : (
+                    highScores.map((s, i) => (
+                      <div 
+                        key={i} 
+                        className={`grid grid-cols-4 p-5 border-b border-slate-700/30 transition-all ${s.alias === playerAlias ? 'bg-blue-500/10' : 'hover:bg-slate-700/30'}`}
+                      >
+                        <div className="font-black text-lg">
+                          {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
+                        </div>
+                        <div className="truncate font-medium text-slate-300">{s.alias}</div>
+                        <div className="text-right font-black text-blue-400">{s.score}</div>
+                        <div className="text-right text-slate-500">{s.attempts}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          </form>
-        </div>
+          </motion.div>
+        )}
 
-        {/* Feedback Area */}
-        <div className={`p-4 rounded-xl border text-center font-medium transition-all ${
-          feedback.type === 'success' ? 'bg-success-green/20 border-success-green text-success-green' :
-          feedback.type === 'warning' ? 'bg-warning-orange/20 border-warning-orange text-warning-orange' :
-          'bg-primary-dark/50 border-primary-blue/50 text-light-gray'
-        }`}>
-          <pre className="font-sans whitespace-pre-wrap">{feedback.message}</pre>
-        </div>
+        {gameState === 'game' && (
+          <motion.div 
+            key="game"
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-screen p-6 md:p-12 flex flex-col items-center relative z-10"
+          >
+            <div className="max-w-md w-full flex flex-col gap-8">
+              {/* Header */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full border border-slate-700 text-slate-400 text-xs font-bold">
+                  <User className="w-3 h-3" /> {playerAlias}
+                </div>
+                <div className="text-xl font-black text-blue-500 italic tracking-tighter">NUMGENIUS</div>
+              </div>
 
-        {/* History */}
-        <div className="bg-dark-slate p-4 rounded-xl border border-primary-blue/20">
-          <div className="flex items-center gap-2 text-sm font-bold text-light-gray/60 mb-3 uppercase">
-            <History className="w-4 h-4" /> Previous Guesses
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {previousGuesses.length === 0 && <span className="text-light-gray/30 text-sm italic">No guesses yet...</span>}
-            {[...previousGuesses].sort((a, b) => a - b).map((g, i) => (
-              <span key={i} className="px-2 py-1 bg-primary-dark rounded border border-primary-blue/30 text-xs font-bold">
-                {g}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="bg-slate-800/40 backdrop-blur-md p-5 rounded-3xl border border-slate-700/50 flex flex-col items-center shadow-xl"
+                >
+                  <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Current Score</span>
+                  <span className="text-3xl font-black text-white flex items-center gap-2">
+                    <Trophy className="w-6 h-6 text-yellow-500" /> {score}
+                  </span>
+                </motion.div>
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="bg-slate-800/40 backdrop-blur-md p-5 rounded-3xl border border-slate-700/50 flex flex-col items-center shadow-xl"
+                >
+                  <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Attempts</span>
+                  <span className="text-3xl font-black text-white flex items-center gap-2">
+                    <Target className="w-6 h-6 text-red-500" /> {attempts}/10
+                  </span>
+                </motion.div>
+              </div>
+
+              {/* Game Card */}
+              <motion.div 
+                animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+                className="bg-slate-800/60 backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border border-slate-700/50 text-center relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 p-6 opacity-10">
+                  <Target className="w-24 h-24 rotate-12" />
+                </div>
+
+                <p className="mb-6 text-slate-400 font-medium">What is the secret number?</p>
+                
+                <form onSubmit={handleGuess} className="flex flex-col gap-6 relative z-10">
+                  <div className="relative group">
+                    <input 
+                      type="number" 
+                      value={guess}
+                      onChange={(e) => setGuess(e.target.value)}
+                      disabled={isGameOver}
+                      className="w-full text-center text-5xl font-black p-6 rounded-3xl bg-slate-900/80 border-2 border-slate-700 text-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all placeholder:text-slate-800"
+                      placeholder="?"
+                      autoFocus
+                    />
+                    <div className="absolute inset-0 rounded-3xl bg-blue-500/10 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      disabled={isGameOver}
+                      className="py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-blue-900/40"
+                    >
+                      <Target className="w-5 h-5" /> Submit Guess
+                    </motion.button>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        type="button"
+                        onClick={() => setGameState('ranking')}
+                        className="py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                      >
+                        <Trophy className="w-4 h-4 text-yellow-500" /> Ranking
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={startNewGame}
+                        className="py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                      >
+                        <RotateCcw className="w-4 h-4" /> Restart
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </motion.div>
+
+              {/* Feedback */}
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={feedback.message}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className={`p-5 rounded-2xl border text-center font-bold transition-all shadow-inner ${
+                    feedback.type === 'success' ? 'bg-green-500/20 border-green-500/50 text-green-300' :
+                    feedback.type === 'warning' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300' :
+                    'bg-slate-800/50 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <p className="leading-relaxed">{feedback.message}</p>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* History */}
+              <div className="bg-slate-800/40 backdrop-blur-md p-6 rounded-3xl border border-slate-700/50">
+                <div className="flex items-center gap-2 text-xs font-black text-slate-500 mb-4 uppercase tracking-widest">
+                  <History className="w-4 h-4" /> History
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {previousGuesses.length === 0 && <span className="text-slate-600 text-sm italic">No guesses yet...</span>}
+                  {[...previousGuesses].sort((a, b) => a - b).map((g, i) => (
+                    <motion.span 
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      key={i} 
+                      className="px-3 py-1 bg-slate-900 rounded-lg border border-slate-700 text-xs font-bold text-slate-300 shadow-sm"
+                    >
+                      {g}
+                    </motion.span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
