@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, RotateCcw, Target, ArrowLeft, User, History, Zap, Sparkles, Crown } from 'lucide-react';
+import { Trophy, RotateCcw, Target, ArrowLeft, User, History, Zap, Sparkles, Crown, Share2, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
@@ -27,6 +27,7 @@ export default function NumGenius() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [gameWon, setGameWon] = useState(false);
   const [shake, setShake] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const savedScores = localStorage.getItem('numgenius_scores');
@@ -34,7 +35,6 @@ export default function NumGenius() {
   }, []);
 
   const triggerVictoryEffects = () => {
-    // Confetti
     confetti({
       particleCount: 150,
       spread: 70,
@@ -42,17 +42,15 @@ export default function NumGenius() {
       colors: ['#3498DB', '#FFD700', '#2ECC71', '#E74C3C']
     });
 
-    // Victory Sound & Applause
-    // Using royalty-free high-quality assets
-    const victorySfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'); // Success Ding
-    const applauseSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/130/130-preview.mp3'); // Applause/Cheer
+    const victorySfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3');
+    const applauseSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/130/130-preview.mp3');
     
     victorySfx.volume = 0.6;
     applauseSfx.volume = 0.5;
 
-    victorySfx.play().catch(e => console.log("Audio playback blocked by browser"));
+    victorySfx.play().catch(e => console.log("Audio playback blocked"));
     setTimeout(() => {
-      applauseSfx.play().catch(e => console.log("Audio playback blocked by browser"));
+      applauseSfx.play().catch(e => console.log("Audio playback blocked"));
     }, 300);
   };
 
@@ -127,9 +125,20 @@ export default function NumGenius() {
     setGuess('');
   };
 
+  const shareToFacebook = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+  };
+
+  const copyShareText = () => {
+    const text = `🎯 I just cracked the code on NumGenius!\n🏆 Score: ${score}\n🎯 Attempts: ${attempts}\n\nCan you beat me? Try it here: ${window.location.href}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-blue-500/30 overflow-x-hidden">
-      {/* Dynamic Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute top-1/2 -right-24 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl animate-pulse delay-700" />
@@ -277,7 +286,6 @@ export default function NumGenius() {
             className="min-h-screen p-6 md:p-12 flex flex-col items-center relative z-10"
           >
             <div className="max-w-md w-full flex flex-col gap-8">
-              {/* Header */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full border border-slate-700 text-slate-400 text-xs font-bold">
                   <User className="w-3 h-3" /> {playerAlias}
@@ -285,7 +293,6 @@ export default function NumGenius() {
                 <div className="text-xl font-black text-blue-500 italic tracking-tighter">NUMGENIUS</div>
               </div>
 
-              {/* Stats */}
               <div className="grid grid-cols-2 gap-4">
                 <motion.div 
                   whileHover={{ y: -5 }}
@@ -307,7 +314,6 @@ export default function NumGenius() {
                 </motion.div>
               </div>
 
-              {/* Game Card */}
               <motion.div 
                 animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
                 className="bg-slate-800/60 backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border border-slate-700/50 text-center relative overflow-hidden"
@@ -363,7 +369,6 @@ export default function NumGenius() {
                 </form>
               </motion.div>
 
-              {/* Feedback */}
               <AnimatePresence mode="wait">
                 <motion.div 
                   key={feedback.message}
@@ -376,11 +381,32 @@ export default function NumGenius() {
                     'bg-slate-800/50 border-slate-700 text-slate-400'
                   }`}
                 >
-                  <p className="leading-relaxed">{feedback.message}</p>
+                  <p className="leading-relaxed mb-4">{feedback.message}</p>
+                  
+                  {gameWon && (
+                    <motion.div 
+                      initial={{ opacity: 0 }} 
+                      animate={{ opacity: 1 }} 
+                      className="flex flex-col sm:flex-row gap-3 justify-center mt-4 pt-4 border-t border-green-500/30"
+                    >
+                      <button 
+                        onClick={shareToFacebook}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20"
+                      >
+                        <Share2 className="w-4 h-4" /> Share to FB
+                      </button>
+                      <button 
+                        onClick={copyShareText}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold text-sm transition-all border border-slate-600"
+                      >
+                        {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        {copied ? 'Copied!' : 'Copy Message'}
+                      </button>
+                    </motion.div>
+                  )}
                 </motion.div>
               </AnimatePresence>
 
-              {/* History */}
               <div className="bg-slate-800/40 backdrop-blur-md p-6 rounded-3xl border border-slate-700/50">
                 <div className="flex items-center gap-2 text-xs font-black text-slate-500 mb-4 uppercase tracking-widest">
                   <History className="w-4 h-4" /> History

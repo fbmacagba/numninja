@@ -5,8 +5,29 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'NumGenius',
-  description: 'The ultimate number guessing challenge',
+  title: 'NumGenius | The Number Guessing Challenge',
+  description: 'Can you crack the code? Test your intuition and climb the leaderboard in the ultimate number guessing game!',
+  openGraph: {
+    title: 'NumGenius 🎯',
+    description: 'I just challenged the Number Ninja! Can you beat my score?',
+    url: 'https://numninja.pages.dev',
+    siteName: 'NumGenius',
+    images: [
+      {
+        url: 'https://numninja.pages.dev/og-image.png', 
+        width: 1200,
+        height: 630,
+        alt: 'NumGenius Game Preview',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'NumGenius 🎯',
+    description: 'Can you beat the Number Ninja?',
+    images: ['https://numninja.pages.dev/og-image.png'],
+  },
 }
 
 export default function RootLayout({
