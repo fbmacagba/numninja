@@ -33,13 +33,27 @@ export default function NumGenius() {
     if (savedScores) setHighScores(JSON.parse(savedScores));
   }, []);
 
-  const triggerConfetti = () => {
+  const triggerVictoryEffects = () => {
+    // Confetti
     confetti({
       particleCount: 150,
       spread: 70,
       origin: { y: 0.6 },
       colors: ['#3498DB', '#FFD700', '#2ECC71', '#E74C3C']
     });
+
+    // Victory Sound & Applause
+    // Using royalty-free high-quality assets
+    const victorySfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'); // Success Ding
+    const applauseSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/130/130-preview.mp3'); // Applause/Cheer
+    
+    victorySfx.volume = 0.6;
+    applauseSfx.volume = 0.5;
+
+    victorySfx.play().catch(e => console.log("Audio playback blocked by browser"));
+    setTimeout(() => {
+      applauseSfx.play().catch(e => console.log("Audio playback blocked by browser"));
+    }, 300);
   };
 
   const startNewGame = () => {
@@ -88,7 +102,7 @@ export default function NumGenius() {
     if (numGuess === secretNumber) {
       setIsGameOver(true);
       setGameWon(true);
-      triggerConfetti();
+      triggerVictoryEffects();
       setFeedback({ message: `🎉 BOOM! You nailed it! The number was ${secretNumber}!`, type: 'success' });
       saveScore(newScore, newAttempts);
     } else if (newAttempts >= 10) {
