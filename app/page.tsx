@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trophy, RotateCcw, Target, ArrowLeft, User, History, Zap, Sparkles, Crown, Share2, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client (Optional - fallback to localStorage if keys are missing)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 type ScoreEntry = {
+  id?: string;
   alias: string;
   score: number;
   attempts: number;
@@ -28,10 +35,41 @@ export default function NumGenius() {
   const [gameWon, setGameWon] = useState(false);
   const [shake, setShake] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isLoadingScores, setIsLoadingScores] = useState(true);
 
+  // Load Scores
   useEffect(() => {
-    const savedScores = localStorage.getItem('numgenius_scores');
-    if (savedScores) setHighScores(JSON.parse(savedScores));
+    async function fetchScores() {
+      setIsLoadingScores(true);
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('scores')
+            .select('*')
+            .order('score', { ascending: false })
+            .limit(50);
+          
+          if (!error && data) {
+            setHighScores(data);
+          } else {
+            console.warn("Supabase error, falling back to local storage", error);
+            loadLocalScores();
+          }
+        } catch (e) {
+          loadLocalScores();
+        }
+      } else {
+        loadLocalScores();
+      }
+      setIsLoadingScores(false);
+    }
+
+    async function loadLocalScores() {
+      const savedScores = localStorage.getItem('numgenius_scores');
+      if (savedScores) setHighScores(JSON.parse(savedScores));
+    }
+
+    fetchScores();
   }, []);
 
   const triggerVictoryEffects = () => {
@@ -67,13 +105,36 @@ export default function NumGenius() {
     setGameState('game');
   };
 
-  const saveScore = (finalScore: number, finalAttempts: number) => {
+  const saveScore = async (finalScore: number, finalAttempts: number) => {
     const newScore: ScoreEntry = {
       alias: playerAlias,
       score: finalScore,
       attempts: finalAttempts,
       timestamp: new Date().toISOString(),
     };
+
+    if (supabase) {
+      try {
+        const { error } = await supabase.from('scores').insert([newScore]);
+        if (error) throw error;
+        
+        // Refresh scores from DB
+        const { data } = await supabase
+            .from('scores')
+            .select('*')
+            .order('score', { ascending: false })
+            .limit(50);
+        if (data) setHighScores(data);
+      } catch (e) {
+        console.error("DB Save failed, saving locally", e);
+        saveLocalScore(newScore);
+      }
+    } else {
+      saveLocalScore(newScore);
+    }
+  };
+
+  const saveLocalScore = (newScore: ScoreEntry) => {
     const updatedScores = [...highScores, newScore].sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
     localStorage.setItem('numgenius_scores', JSON.stringify(updatedScores));
@@ -251,7 +312,12 @@ export default function NumGenius() {
                   <div className="text-right">Tries</div>
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
-                  {highScores.length === 0 ? (
+                  {isLoadingScores ? (
+                    <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-4">
+                      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      <p>Loading legends...</p>
+                    </div>
+                  ) : highScores.length === 0 ? (
                     <div className="p-16 text-center text-slate-500">
                       <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-20" />
                       <p>No legends yet. Be the first!</p>
