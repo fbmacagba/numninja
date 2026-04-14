@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share2, Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share2, Copy, Check, ArrowUp, ArrowDown, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
@@ -187,6 +187,20 @@ export default function NumNinja() {
     } catch (err) {
       setAliasError('Network error, please try again.');
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.warn('Logout failed:', error);
+    }
+    setGameState('login');
+    setPlayerAlias('');
+    setPassword('');
+    setHighScores([]); 
+    // Reload to clear state safely
+    window.location.reload();
   };
 
   const startNextLevel = () => {
@@ -557,6 +571,15 @@ export default function NumNinja() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleLogout}
+                    className="p-2 bg-slate-900/[0.85] backdrop-blur-md hover:bg-red-900/[0.85] text-slate-400 hover:text-red-400 rounded-full border border-slate-700 hover:border-red-500/50 transition-all shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                    title="Log Out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
