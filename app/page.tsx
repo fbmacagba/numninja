@@ -243,7 +243,7 @@ export default function NumNinja() {
     <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-indigo-500/30 overflow-x-hidden relative">
       {/* Background */}
       <div className="fixed inset-0 -z-10">
-        <img src="/og-image.png" className="w-full h-full object-cover opacity-85" alt="" />
+        <img src="/numninja-bg.jpg" className="w-full h-full object-cover opacity-85" alt="" />
         <div className="absolute inset-0 bg-[#0f172a]/30" />
       </div>
 

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat next.config.js)",
+      "Bash(cat next.config.mjs)",
+      "Bash(cat next.config.ts)",
+      "Bash(npm install:*)",
+      "Bash(python3 -c ':*)",
+      "Bash(npm ci:*)",
+      "Bash(npm --version)",
+      "Bash(node -e ':*)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('node_modules/es-abstract/package.json'\\)\\); print\\('version:', d['version']\\)\")",
+      "Bash(rm -rf node_modules package-lock.json)",
+      "Bash(npx npm@10 install)",
+      "Bash(npx npm@10 ci --dry-run)",
+      "Bash(awk '{print $NF}')",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npx npm@10 install --legacy-peer-deps)"
+    ]
+  }
+}
