@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share2, Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import bgImg from '../public/numninja-bg.jpg';
+import bgImg from '../public/numninja-bg-new.png';
 
 type ScoreEntry = {
   id?: number;
