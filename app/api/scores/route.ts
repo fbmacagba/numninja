@@ -6,7 +6,7 @@ export const runtime = 'edge';
 export async function GET() {
   try {
     const { env } = getRequestContext();
-    const db = env.DB;
+    const db = (env as any).DB;
 
     if (!db) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
@@ -26,7 +26,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { env } = getRequestContext();
-    const db = env.DB;
+    const db = (env as any).DB;
 
     if (!db) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
