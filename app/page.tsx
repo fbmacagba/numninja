@@ -240,11 +240,12 @@ export default function NumNinja() {
   const proxCfg = proximity ? PROXIMITY_CONFIG[proximity] : null;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden relative">
+    <div className="min-h-screen text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden relative">
       {/* Background */}
-      <div className="fixed inset-0 -z-10">
-        <img src="/numninja-bg.jpg" className="w-full h-full object-cover opacity-85" alt="" />
-        <div className="absolute inset-0 bg-slate-900/50" />
+      <div className="fixed inset-0 -z-10 bg-black">
+        <img src="/numninja-bg.jpg" className="w-full h-full object-cover opacity-100" alt="" />
+        {/* Very light edge shadow for depth, otherwise completely vibrant */}
+        <div className="absolute inset-0 bg-black/10" />
       </div>
 
       <FloatingNumbers />
