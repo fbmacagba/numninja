@@ -49,8 +49,8 @@ function FloatingNumbers() {
       {FLOAT_POSITIONS.map((pos, i) => (
         <motion.span
           key={i}
-          className={`absolute font-black text-white select-none ${pos.size}`}
-          style={{ top: pos.top, left: pos.left, opacity: 0.06 }}
+          className={`absolute font-black text-orange-400 select-none ${pos.size} drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]`}
+          style={{ top: pos.top, left: pos.left, opacity: 0.15 }}
           animate={{ y: [0, -30, 0] }}
           transition={{ duration: pos.duration, delay: pos.delay, repeat: Infinity, ease: 'easeInOut' }}
         >
@@ -112,7 +112,7 @@ export default function NumNinja() {
       particleCount: 150,
       spread: 70,
       origin: { y: 0.6 },
-      colors: ['#818cf8', '#a78bfa', '#ffd700', '#34d399', '#f87171'],
+      colors: ['#06b6d4', '#3b82f6', '#ffd700', '#34d399', '#f87171'],
     });
     const victorySfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3');
     const applauseSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/130/130-preview.mp3');
@@ -240,11 +240,11 @@ export default function NumNinja() {
   const proxCfg = proximity ? PROXIMITY_CONFIG[proximity] : null;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-indigo-500/30 overflow-x-hidden relative">
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden relative">
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <img src="/numninja-bg.jpg" className="w-full h-full object-cover opacity-85" alt="" />
-        <div className="absolute inset-0 bg-[#0f172a]/30" />
+        <div className="absolute inset-0 bg-slate-900/50" />
       </div>
 
       <FloatingNumbers />
@@ -260,19 +260,19 @@ export default function NumNinja() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="min-h-screen flex items-center justify-center p-6 relative z-10"
           >
-            <div className="bg-slate-800/40 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-slate-700/50">
+            <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
               <motion.div
                 initial={{ rotate: -10, scale: 0.8 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200 }}
                 className="flex justify-center mb-6"
               >
-                <div className="p-4 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/40">
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl shadow-lg shadow-cyan-500/40">
                   <Target className="w-12 h-12 text-white" />
                 </div>
               </motion.div>
 
-              <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-indigo-400 via-violet-400 to-indigo-300 bg-clip-text text-transparent tracking-tight">
+              <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent tracking-tight">
                 NumNinja
               </h1>
               <p className="text-slate-400 mb-8 font-medium">Can you crack the secret code?</p>
@@ -286,7 +286,7 @@ export default function NumNinja() {
                   value={playerAlias}
                   onChange={(e) => setPlayerAlias(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && playerAlias && startNewGame()}
-                  className="w-full p-4 rounded-2xl bg-slate-900/50 border border-slate-700 text-white text-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-600"
+                  className="w-full p-4 rounded-2xl bg-slate-900/50 border border-slate-700 text-white text-xl focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-600"
                   placeholder="Enter your name..."
                 />
               </div>
@@ -296,13 +296,13 @@ export default function NumNinja() {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => playerAlias && startNewGame()}
                 disabled={!playerAlias}
-                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-xl shadow-indigo-900/30"
+                className="w-full py-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(249,115,22,0.4)]"
               >
                 <Zap className="w-5 h-5 fill-current" /> Start Adventure
               </motion.button>
 
               {highScores.length > 0 && (
-                <div className="mt-10 pt-8 border-t border-slate-700/50">
+                <div className="mt-10 pt-8 border-t border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                   <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
                     <Crown className="w-4 h-4 text-yellow-500" /> Hall of Fame
                   </h2>
@@ -319,7 +319,7 @@ export default function NumNinja() {
                           <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
                           <span className="font-medium text-slate-300">{s.alias}</span>
                         </span>
-                        <span className="font-black text-indigo-400">{s.score}</span>
+                        <span className="font-black text-cyan-400">{s.score}</span>
                       </motion.div>
                     ))}
                   </div>
@@ -352,8 +352,8 @@ export default function NumNinja() {
                 </button>
               </div>
 
-              <div className="bg-slate-800/40 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50">
-                <div className="grid grid-cols-4 bg-slate-900/50 p-5 font-bold text-slate-500 text-xs uppercase tracking-widest border-b border-slate-700/50">
+              <div className="bg-slate-900/60 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                <div className="grid grid-cols-4 bg-slate-900/50 p-5 font-bold text-slate-500 text-xs uppercase tracking-widest border-b border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                   <div>Rank</div>
                   <div>Player</div>
                   <div className="text-right">Score</div>
@@ -362,7 +362,7 @@ export default function NumNinja() {
                 <div className="max-h-[60vh] overflow-y-auto">
                   {isLoadingScores ? (
                     <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-4">
-                      <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
                       <p>Loading legends...</p>
                     </div>
                   ) : highScores.length === 0 ? (
@@ -376,7 +376,7 @@ export default function NumNinja() {
                         key={i}
                         className={`grid grid-cols-4 p-5 border-b border-slate-700/30 transition-all ${
                           s.alias === playerAlias
-                            ? 'bg-indigo-500/10 border-l-4 border-l-indigo-500'
+                            ? 'bg-cyan-500/10 border-l-4 border-l-cyan-500'
                             : 'hover:bg-slate-700/30'
                         }`}
                       >
@@ -384,7 +384,7 @@ export default function NumNinja() {
                           {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
                         </div>
                         <div className="truncate font-medium text-slate-300">{s.alias}</div>
-                        <div className="text-right font-black text-indigo-400">{s.score}</div>
+                        <div className="text-right font-black text-cyan-400">{s.score}</div>
                         <div className="text-right text-slate-500">{s.attempts}</div>
                       </div>
                     ))
@@ -416,12 +416,12 @@ export default function NumNinja() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => shareToFacebook()}
-                    className="p-2 bg-slate-800/50 hover:bg-indigo-600/20 text-slate-400 hover:text-indigo-400 rounded-full border border-slate-700 transition-all"
+                    className="p-2 bg-slate-800/50 hover:bg-cyan-600/20 text-slate-400 hover:text-cyan-400 rounded-full border border-slate-700 transition-all"
                     title="Share to Facebook"
                   >
                     <Share2 className="w-4 h-4" />
                   </motion.button>
-                  <div className="text-xl font-black bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent italic tracking-tighter">
+                  <div className="text-xl font-black bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_5px_rgba(251,146,60,0.4)] italic tracking-tighter">
                     NUMNINJA
                   </div>
                 </div>
@@ -431,14 +431,14 @@ export default function NumNinja() {
               <div className="grid grid-cols-2 gap-4">
                 <motion.div
                   whileHover={{ y: -4 }}
-                  className="bg-slate-800/40 backdrop-blur-md p-5 rounded-3xl border border-slate-700/50 flex flex-col items-center shadow-xl"
+                  className="bg-slate-900/60 backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
                 >
                   <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Score</span>
                   <span className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
                     <motion.span
                       key={score}
-                      initial={{ scale: 1.3, color: '#a5b4fc' }}
+                      initial={{ scale: 1.3, color: '#67e8f9' }}
                       animate={{ scale: 1, color: '#ffffff' }}
                       className="text-3xl font-black"
                     >
@@ -448,7 +448,7 @@ export default function NumNinja() {
                 </motion.div>
                 <motion.div
                   whileHover={{ y: -4 }}
-                  className="bg-slate-800/40 backdrop-blur-md p-5 rounded-3xl border border-slate-700/50 flex flex-col items-center shadow-xl"
+                  className="bg-slate-900/60 backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
                 >
                   <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-3">Attempts</span>
                   <div className="flex gap-1.5 flex-wrap justify-center">
@@ -457,7 +457,7 @@ export default function NumNinja() {
                         key={i}
                         className={`w-3 h-3 rounded-full transition-all duration-300 ${
                           i < attempts
-                            ? 'bg-indigo-500 shadow-sm shadow-indigo-500/60 scale-110'
+                            ? 'bg-cyan-500 shadow-sm shadow-cyan-500/60 scale-110'
                             : 'bg-slate-700'
                         }`}
                       />
@@ -469,8 +469,8 @@ export default function NumNinja() {
               {/* Guess Card */}
               <motion.div
                 animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
-                className={`bg-slate-800/60 backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border-2 text-center relative overflow-hidden transition-all duration-300 ${
-                  proxCfg ? `${proxCfg.border} shadow-xl ${proxCfg.glow}` : 'border-slate-700/50'
+                className={`bg-slate-900/70 backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border-2 text-center relative overflow-hidden transition-all duration-300 ${
+                  proxCfg ? `${proxCfg.border} shadow-xl ${proxCfg.glow}` : 'border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
                 }`}
               >
                 <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
@@ -501,7 +501,7 @@ export default function NumNinja() {
                       value={guess}
                       onChange={(e) => setGuess(e.target.value)}
                       disabled={isGameOver}
-                      className="w-full text-center text-5xl font-black p-6 rounded-3xl bg-slate-900/80 border-2 border-slate-700 text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-800"
+                      className="w-full text-center text-5xl font-black p-6 rounded-3xl bg-slate-900/80 border-2 border-slate-700 text-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/40 outline-none transition-all placeholder:text-slate-800"
                       placeholder="?"
                       autoFocus
                     />
@@ -512,7 +512,7 @@ export default function NumNinja() {
                           : <ArrowDown className="w-6 h-6" />}
                       </div>
                     )}
-                    <div className="absolute inset-0 rounded-3xl bg-indigo-500/10 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+                    <div className="absolute inset-0 rounded-3xl bg-orange-500/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
                   </div>
 
                   <div className="flex flex-col gap-4">
@@ -521,7 +521,7 @@ export default function NumNinja() {
                       whileTap={{ scale: 0.98 }}
                       type="submit"
                       disabled={isGameOver}
-                      className="py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-indigo-900/40"
+                      className="py-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(249,115,22,0.4)]"
                     >
                       <Target className="w-5 h-5" /> Submit Guess
                     </motion.button>
@@ -586,7 +586,7 @@ export default function NumNinja() {
               </AnimatePresence>
 
               {/* Previous Guesses */}
-              <div className="bg-slate-800/40 backdrop-blur-md p-6 rounded-3xl border border-slate-700/50">
+              <div className="bg-slate-900/60 backdrop-blur-md p-6 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                 <div className="text-xs font-black text-slate-500 mb-4 uppercase tracking-widest">History</div>
                 <div className="flex flex-wrap gap-2">
                   {previousGuesses.length === 0 && (
