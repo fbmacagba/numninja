@@ -558,10 +558,10 @@ export default function NumNinja() {
                   className={`p-5 rounded-2xl border text-center font-bold transition-all shadow-inner ${
                     feedback.type === 'success' ? 'bg-green-500/20 border-green-500/50 text-green-300' :
                     feedback.type === 'warning' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300' :
-                    'bg-slate-800/50 border-slate-700 text-slate-400'
+                    'bg-cyan-900/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] text-cyan-300'
                   }`}
                 >
-                  <p className="leading-relaxed">{feedback.message}</p>
+                  <p className="leading-relaxed text-lg tracking-wide">{feedback.message}</p>
 
                   {gameWon && (
                     <motion.div
