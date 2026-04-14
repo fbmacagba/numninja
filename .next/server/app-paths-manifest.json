@@ -1,5 +1,1 @@
-{
-  "/api/scores/route": "app/api/scores/route.js",
-  "/api/auth/register/route": "app/api/auth/register/route.js",
-  "/page": "app/page.js"
-}
+{}
