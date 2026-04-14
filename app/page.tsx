@@ -214,13 +214,24 @@ export default function NumNinja() {
     setGuess('');
   };
 
-  const shareToFacebook = () => {
+  const shareToFacebook = (finalScore?: number, finalAttempts?: number) => {
     const url = encodeURIComponent(window.location.href);
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+    const quote = finalScore !== undefined
+      ? encodeURIComponent(
+          `🥷 I just cracked NumNinja!\n` +
+          `🎯 Guessed it in ${finalAttempts} attempt${finalAttempts === 1 ? '' : 's'} — Score: ${finalScore}/1000\n\n` +
+          `Think you can beat me? It's harder than it looks. 👇`
+        )
+      : encodeURIComponent(`🥷 Can YOU beat the NumNinja?\nGuess the secret number 1–100 before your 10 attempts run out. Simple? Think again. 👇`);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${quote}`, '_blank');
   };
 
   const copyShareText = () => {
-    const text = `🎯 I just cracked the code on NumNinja!\n🏆 Score: ${score}\n🎯 Attempts: ${attempts}\n\nCan you beat me? Try it here: ${window.location.href}`;
+    const text =
+      `🥷 I just cracked NumNinja!\n` +
+      `🎯 Guessed it in ${attempts} attempt${attempts === 1 ? '' : 's'} — Score: ${score}/1000\n\n` +
+      `Think you can beat me? It's harder than it looks.\n` +
+      `👉 ${window.location.href}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -232,8 +243,8 @@ export default function NumNinja() {
     <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-indigo-500/30 overflow-x-hidden relative">
       {/* Background */}
       <div className="fixed inset-0 -z-10">
-        <img src="/og-image.png" className="w-full h-full object-cover opacity-60" alt="" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0f172a]/30 via-[#0f172a]/60 to-[#0f172a]/85" />
+        <img src="/og-image.png" className="w-full h-full object-cover opacity-85" alt="" />
+        <div className="absolute inset-0 bg-[#0f172a]/30" />
       </div>
 
       <FloatingNumbers />
@@ -404,7 +415,7 @@ export default function NumNinja() {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={shareToFacebook}
+                    onClick={() => shareToFacebook()}
                     className="p-2 bg-slate-800/50 hover:bg-indigo-600/20 text-slate-400 hover:text-indigo-400 rounded-full border border-slate-700 transition-all"
                     title="Share to Facebook"
                   >
@@ -557,7 +568,7 @@ export default function NumNinja() {
                       className="flex flex-col sm:flex-row gap-3 justify-center mt-4 pt-4 border-t border-green-500/30"
                     >
                       <button
-                        onClick={shareToFacebook}
+                        onClick={() => shareToFacebook(score, attempts)}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20"
                       >
                         <Share2 className="w-4 h-4" /> Share to FB
