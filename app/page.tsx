@@ -31,20 +31,35 @@ export default function NumNinja() {
   const [copied, setCopied] = useState(false);
   const [isLoadingScores, setIsLoadingScores] = useState(true);
 
-  // Load Scores - Permanent LocalStorage only for stability
+  // Load Scores - Try API first, fallback to LocalStorage
   useEffect(() => {
-    function loadLocalScores() {
-      const savedScores = localStorage.getItem('numninja_scores');
-      if (savedScores) {
-        try {
-          setHighScores(JSON.parse(savedScores));
-        } catch (e) {
-          console.error("Failed to parse scores");
+    async function loadScores() {
+      try {
+        // Try to fetch from API (persistent global storage)
+        const response = await fetch('/api/scores');
+        if (response.ok) {
+          const apiScores = await response.json();
+          setHighScores(apiScores);
+          // Also sync to localStorage for offline support
+          localStorage.setItem('numninja_scores', JSON.stringify(apiScores));
+        } else {
+          throw new Error('API returned non-ok status');
+        }
+      } catch (error) {
+        // Fallback to localStorage if API fails
+        console.warn('Failed to load from API, using localStorage:', error);
+        const savedScores = localStorage.getItem('numninja_scores');
+        if (savedScores) {
+          try {
+            setHighScores(JSON.parse(savedScores));
+          } catch (e) {
+            console.error("Failed to parse scores");
+          }
         }
       }
       setIsLoadingScores(false);
     }
-    loadLocalScores();
+    loadScores();
   }, []);
 
   const triggerVictoryEffects = () => {
@@ -80,7 +95,7 @@ export default function NumNinja() {
     setGameState('game');
   };
 
-  const saveScore = (finalScore: number, finalAttempts: number) => {
+  const saveScore = async (finalScore: number, finalAttempts: number) => {
     const newScore: ScoreEntry = {
       alias: playerAlias,
       score: finalScore,
@@ -90,7 +105,24 @@ export default function NumNinja() {
 
     const updatedScores = [...highScores, newScore].sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
+    
+    // Save to localStorage for offline support
     localStorage.setItem('numninja_scores', JSON.stringify(updatedScores));
+    
+    // Save to API for persistent global storage
+    try {
+      const response = await fetch('/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newScore),
+      });
+      
+      if (!response.ok) {
+        console.warn('Failed to save score to server, using localStorage only');
+      }
+    } catch (error) {
+      console.warn('Failed to reach API, score saved to localStorage only:', error);
+    }
   };
 
   const handleGuess = (e: React.FormEvent) => {
