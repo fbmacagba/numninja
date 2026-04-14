@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share2, Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import bgImg from '../public/numninja-bg.jpg';
 
 type ScoreEntry = {
   id?: number;
@@ -243,7 +244,7 @@ export default function NumNinja() {
     <div className="min-h-screen text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden relative">
       {/* Background */}
       <div className="fixed inset-0 -z-10 bg-black">
-        <img src="/numninja-bg.jpg" className="w-full h-full object-cover opacity-100" alt="" />
+        <img src={bgImg.src} className="w-full h-full object-cover opacity-100" alt="" />
         {/* Very light edge shadow for depth, otherwise completely vibrant */}
         <div className="absolute inset-0 bg-black/10" />
       </div>

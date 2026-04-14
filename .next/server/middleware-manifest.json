@@ -8,7 +8,6 @@
         "server/middleware-react-loadable-manifest.js",
         "server/next-font-manifest.js",
         "server/interception-route-rewrite-manifest.js",
-        "prerender-manifest.js",
         "server/edge-runtime-webpack.js",
         "server/app/api/scores/route.js"
       ],
@@ -22,11 +21,7 @@
       ],
       "wasm": [],
       "assets": [],
-      "environments": {
-        "previewModeId": "2bf7f95a730ad2f13a4f1f94d5157df9",
-        "previewModeSigningKey": "ebca1fd6065630effe0078a81c2adb17359eceeda196949b0b57efd513fe6122",
-        "previewModeEncryptionKey": "cfdf235f82a621cc50ae39491c0a03f006d66e3ba60b3e226683e94b2ac28963"
-      }
+      "environments": {}
     }
   },
   "sortedMiddleware": []
