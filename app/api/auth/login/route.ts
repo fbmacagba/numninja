@@ -1,0 +1,55 @@
+import { getRequestContext } from '@cloudflare/next-on-pages';
+import { NextResponse } from 'next/server';
+import { verifyPassword, signSessionToken } from '../../../../lib/auth';
+import { cookies } from 'next/headers';
+
+export const runtime = 'edge';
+
+export async function POST(request: Request) {
+  try {
+    const { env } = getRequestContext();
+    const db = (env as any).DB;
+
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
+
+    const { alias, password } = await request.json();
+
+    if (!alias || !password) {
+      return NextResponse.json({ error: 'Missing alias or password' }, { status: 400 });
+    }
+
+    const normalizedAlias = alias.trim();
+
+    // Fetch user
+    const user = await db.prepare('SELECT id, password_hash FROM users WHERE LOWER(alias) = LOWER(?)')
+      .bind(normalizedAlias).first();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Invalid alias or password' }, { status: 401 });
+    }
+
+    // Verify hash
+    const isValid = await verifyPassword(password, user.password_hash as string);
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid alias or password' }, { status: 401 });
+    }
+
+    // Issue JWT
+    const token = await signSessionToken({ id: user.id as number, alias: normalizedAlias });
+    
+    cookies().set('numninja_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: '/',
+    });
+
+    return NextResponse.json({ success: true, alias: normalizedAlias });
+  } catch (error) {
+    console.error('Login Error:', error);
+    return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 });
+  }
+}

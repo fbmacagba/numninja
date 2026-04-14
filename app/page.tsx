@@ -5,10 +5,21 @@ import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
+const LEVELS = [
+  { level: 1, rank: 'Novice', range: 10, attempts: 4, theme: 'cyan' },
+  { level: 2, rank: 'Apprentice', range: 20, attempts: 5, theme: 'cyan' },
+  { level: 3, rank: 'Warrior', range: 50, attempts: 7, theme: 'indigo' },
+  { level: 4, rank: 'Ninja', range: 100, attempts: 10, theme: 'purple' },
+  { level: 5, rank: 'Assassin', range: 200, attempts: 12, theme: 'amber' },
+  { level: 6, rank: 'Shadow', range: 500, attempts: 15, theme: 'orange' },
+  { level: 7, rank: 'Grandmaster', range: 1000, attempts: 20, theme: 'red' }
+];
+
 type ScoreEntry = {
   id?: number;
   alias: string;
   score: number;
+  levelReached: number;
   attempts: number;
   timestamp: string;
 };
@@ -63,11 +74,16 @@ function FloatingNumbers() {
 
 export default function NumNinja() {
   const [gameState, setGameState] = useState<'login' | 'game' | 'ranking'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [playerAlias, setPlayerAlias] = useState('');
+  const [password, setPassword] = useState('');
+  const [aliasError, setAliasError] = useState<string | null>(null);
   const [secretNumber, setSecretNumber] = useState(0);
   const [guess, setGuess] = useState('');
   const [attempts, setAttempts] = useState(0);
-  const [score, setScore] = useState(1000);
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [totalScore, setTotalScore] = useState(0);
+  const [smokeBombs, setSmokeBombs] = useState(0);
   const [feedback, setFeedback] = useState({ message: 'Welcome to NumNinja! Guess a number between 1-100.', type: 'info' });
   const [previousGuesses, setPreviousGuesses] = useState<{ value: number; result: 'high' | 'low' | 'exact' }[]>([]);
   const [highScores, setHighScores] = useState<ScoreEntry[]>([]);
@@ -121,11 +137,73 @@ export default function NumNinja() {
     victorySfx.play().catch(() => {});
     setTimeout(() => applauseSfx.play().catch(() => {}), 300);
   };
+  
+  const playSfx = (type: 'win' | 'fail' | 'wrong' | 'smoke') => {
+    try {
+      const urls = {
+        win: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+        fail: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+        wrong: 'https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3',
+        smoke: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
+      };
+      const audio = new Audio(urls[type]);
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
+    } catch(e) {}
+  };
 
-  const startNewGame = () => {
-    setSecretNumber(Math.floor(Math.random() * 100) + 1);
+  const activeLevelConfig = LEVELS[currentLevel - 1] || LEVELS[0];
+
+  const startNewRun = () => {
+    setCurrentLevel(1);
+    setTotalScore(0);
+    setSmokeBombs(0);
+    startLevel(1);
+  };
+
+  const handleLogin = async () => {
+    const normalized = playerAlias.trim();
+    if (!normalized || !password || normalized.length < 3 || password.length < 4) {
+      setAliasError("Alias & Password must be longer (3/4 chars).");
+      return;
+    }
+    
+    setAliasError(null);
+    try {
+      const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alias: normalized, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setAliasError(data.error || 'Authentication failed');
+        return;
+      }
+
+      startNewRun();
+    } catch (err) {
+      setAliasError('Network error, please try again.');
+    }
+  };
+
+  const startNextLevel = () => {
+    const nextLvl = currentLevel + 1;
+    setCurrentLevel(nextLvl);
+    startLevel(nextLvl);
+  };
+
+  const saveAndQuit = () => {
+    saveScore(totalScore, 0, currentLevel);
+    setGameState('ranking');
+  };
+
+  const startLevel = (levelIndex: number) => {
+    const config = LEVELS[levelIndex - 1];
+    setSecretNumber(Math.floor(Math.random() * config.range) + 1);
     setAttempts(0);
-    setScore(1000);
     setPreviousGuesses([]);
     setGuess('');
     setIsGameOver(false);
@@ -133,14 +211,15 @@ export default function NumNinja() {
     setProximity(null);
     setGuessDir(null);
     setStartTime(Date.now());
-    setFeedback({ message: `Ready, ${playerAlias}! Guess a number between 1-100.`, type: 'info' });
+    setFeedback({ message: `Level ${config.level} (${config.rank}). Ready, ${playerAlias}! Guess 1-${config.range}.`, type: 'info' });
     setGameState('game');
   };
 
-  const saveScore = async (finalScore: number, finalAttempts: number) => {
+  const saveScore = async (finalScore: number, finalAttempts: number, levelReached: number) => {
     const newScore: ScoreEntry = {
       alias: playerAlias,
       score: finalScore,
+      levelReached,
       attempts: finalAttempts,
       timestamp: new Date().toISOString(),
     };
@@ -162,8 +241,8 @@ export default function NumNinja() {
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
     const numGuess = parseInt(guess);
-    if (isNaN(numGuess) || numGuess < 1 || numGuess > 100) {
-      setFeedback({ message: 'Enter a valid number (1-100)!', type: 'warning' });
+    if (isNaN(numGuess) || numGuess < 1 || numGuess > activeLevelConfig.range) {
+      setFeedback({ message: `Enter a valid number (1-${activeLevelConfig.range})!`, type: 'warning' });
       return;
     }
 
@@ -175,43 +254,74 @@ export default function NumNinja() {
     setPreviousGuesses(prev => [...prev, { value: numGuess, result }]);
 
     const timeElapsed = (Date.now() - startTime) / 1000;
-    const timePenalty = Math.floor(timeElapsed / 10);
-    const newScore = Math.max(100, 1000 - (newAttempts * 50) - timePenalty);
-    setScore(newScore);
+    const isSpeedBonus = timeElapsed <= 15;
 
     if (numGuess === secretNumber) {
       setIsGameOver(true);
       setGameWon(true);
       setProximity(null);
       setGuessDir(null);
+      playSfx('win');
       triggerVictoryEffects();
-      setFeedback({ message: `🎉 BOOM! You nailed it! The number was ${secretNumber}!`, type: 'success' });
-      saveScore(newScore, newAttempts);
-    } else if (newAttempts >= 10) {
+      
+      const basePoints = activeLevelConfig.range * 10;
+      const attemptMultiplier = ((activeLevelConfig.attempts - newAttempts) * basePoints) / 10;
+      let roundScore = basePoints + attemptMultiplier;
+      if (isSpeedBonus) roundScore = Math.floor(roundScore * 1.5);
+      
+      const newTotal = totalScore + roundScore;
+      setTotalScore(newTotal);
+      setSmokeBombs(prev => prev + 1);
+
+      let msg = `🎉 Level Cleared! +${roundScore} pts.`;
+      if (newAttempts === 1) msg = `GODLIKE INSTINCT! 🎯 First try! +${roundScore}`;
+      else if (isSpeedBonus) msg = `⚡ Speed Demon! +50% Bonus! +${roundScore}`;
+
+      setFeedback({ message: msg, type: 'success' });
+      
+      if (currentLevel === LEVELS.length) {
+        saveScore(newTotal, newAttempts, currentLevel); // gauntlet finished
+      }
+    } else if (newAttempts >= activeLevelConfig.attempts) {
+      playSfx('fail');
       setIsGameOver(true);
       setGameWon(false);
       setProximity(null);
       setGuessDir(null);
-      setFeedback({ message: `😢 Out of attempts! The secret number was ${secretNumber}.`, type: 'warning' });
+      setFeedback({ message: `💀 LEVEL FAILED. The number was ${secretNumber}.`, type: 'warning' });
+      // In unlock mode, we don't save score on failure, they just retry.
     } else {
+      playSfx('wrong');
       const distance = Math.abs(numGuess - secretNumber);
       setProximity(getProximity(distance));
       setGuessDir(numGuess < secretNumber ? 'higher' : 'lower');
       setShake(true);
       setTimeout(() => setShake(false), 500);
-      if (numGuess < secretNumber) {
-        setFeedback({ message: '⬆️ TOO LOW! Go higher!', type: 'warning' });
+
+      const attemptsLeft = activeLevelConfig.attempts - newAttempts;
+      if (attemptsLeft === 1) {
+         setFeedback({ message: 'Focus... your life depends on it. 🧘‍♂️ (1 try left!)', type: 'warning' });
       } else {
-        setFeedback({ message: '⬇️ TOO HIGH! Go lower!', type: 'warning' });
+         if (numGuess < secretNumber) {
+           setFeedback({ message: '⬆️ TOO LOW! Go higher!', type: 'warning' });
+         } else {
+           setFeedback({ message: '⬇️ TOO HIGH! Go lower!', type: 'warning' });
+         }
       }
     }
 
-    if (newAttempts === 5 && numGuess !== secretNumber) {
-      const hint = `💡 HINT: The number is ${secretNumber % 2 === 0 ? 'EVEN' : 'ODD'}!`;
-      setTimeout(() => setFeedback({ message: hint, type: 'info' }), 1500);
-    }
-
     setGuess('');
+  };
+
+  const useSmokeBomb = () => {
+    if (smokeBombs > 0 && !isGameOver) {
+       playSfx('smoke');
+       setSmokeBombs(prev => prev - 1);
+       const variance = Math.max(2, Math.floor(activeLevelConfig.range * 0.15));
+       const low = Math.max(1, secretNumber - variance);
+       const high = Math.min(activeLevelConfig.range, secretNumber + variance);
+       setFeedback({ message: `💨 SMOKE BOMB: It's between ${low} and ${high}!`, type: 'info' });
+    }
   };
 
   const shareToFacebook = (finalScore?: number, finalAttempts?: number) => {
@@ -229,7 +339,7 @@ export default function NumNinja() {
   const copyShareText = () => {
     const text =
       `🥷 I just cracked NumNinja!\n` +
-      `🎯 Guessed it in ${attempts} attempt${attempts === 1 ? '' : 's'} — Score: ${score}/1000\n\n` +
+      `🎯 Guessed it in ${attempts} attempt${attempts === 1 ? '' : 's'} — Score: ${totalScore}/1000\n\n` +
       `Think you can beat me? It's harder than it looks.\n` +
       `👉 ${window.location.href}`;
     navigator.clipboard.writeText(text);
@@ -265,7 +375,7 @@ export default function NumNinja() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="min-h-screen flex items-center justify-center p-6 relative z-10"
           >
-            <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+            <div className="bg-slate-900/[0.85] backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
               <motion.div
                 initial={{ rotate: -10, scale: 0.8 }}
                 animate={{ rotate: 0, scale: 1 }}
@@ -282,28 +392,53 @@ export default function NumNinja() {
               </h1>
               <p className="text-slate-400 mb-8 font-medium">Can you crack the secret code?</p>
 
-              <div className="mb-8 text-left">
-                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-500 ml-1">
-                  Player Alias
-                </label>
-                <input
-                  type="text"
-                  value={playerAlias}
-                  onChange={(e) => setPlayerAlias(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && playerAlias && startNewGame()}
-                  className="w-full p-4 rounded-2xl bg-slate-900/50 border border-slate-700 text-white text-xl focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-600"
-                  placeholder="Enter your name..."
-                />
+              <div className="mb-6 text-left space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-500 ml-1">
+                    Player Alias
+                  </label>
+                  <input
+                    type="text"
+                    value={playerAlias}
+                    onChange={(e) => { setPlayerAlias(e.target.value); setAliasError(null); }}
+                    className={`w-full p-4 rounded-2xl bg-slate-900/50 border text-white text-xl focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-600 ${aliasError ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'border-slate-700'}`}
+                    placeholder="Enter your name..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-500 ml-1 flex justify-between items-center">
+                    Password
+                    <button 
+                      onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAliasError(null); }}
+                      className="text-cyan-400 hover:text-cyan-300 normal-case"
+                    >
+                      {authMode === 'login' ? 'Need an account?' : 'Already have one?'}
+                    </button>
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setAliasError(null); }}
+                    onKeyDown={(e) => e.key === 'Enter' && playerAlias && password && handleLogin()}
+                    className={`w-full p-4 rounded-2xl bg-slate-900/50 border text-white text-xl focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-600 ${aliasError ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'border-slate-700'}`}
+                    placeholder="Secret code..."
+                  />
+                </div>
+                {aliasError && (
+                  <p className="text-red-400 text-sm font-bold mt-2 ml-2 flex items-center gap-1">
+                    <Zap className="w-4 h-4" /> {aliasError}
+                  </p>
+                )}
               </div>
 
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => playerAlias && startNewGame()}
-                disabled={!playerAlias}
-                className="w-full py-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(249,115,22,0.4)]"
+                onClick={handleLogin}
+                disabled={!playerAlias || !password}
+                className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(6,182,212,0.4)]"
               >
-                <Zap className="w-5 h-5 fill-current" /> Start Adventure
+                <Zap className="w-5 h-5 fill-current" /> {authMode === 'login' ? 'Login & Play' : 'Register & Play'}
               </motion.button>
 
               {highScores.length > 0 && (
@@ -357,12 +492,12 @@ export default function NumNinja() {
                 </button>
               </div>
 
-              <div className="bg-slate-900/60 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              <div className="bg-slate-900/[0.85] backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                 <div className="grid grid-cols-4 bg-slate-900/50 p-5 font-bold text-slate-500 text-xs uppercase tracking-widest border-b border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                   <div>Rank</div>
                   <div>Player</div>
                   <div className="text-right">Score</div>
-                  <div className="text-right">Tries</div>
+                  <div className="text-right">Level</div>
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto">
                   {isLoadingScores ? (
@@ -390,7 +525,7 @@ export default function NumNinja() {
                         </div>
                         <div className="truncate font-medium text-slate-300">{s.alias}</div>
                         <div className="text-right font-black text-cyan-400">{s.score}</div>
-                        <div className="text-right text-slate-500">{s.attempts}</div>
+                        <div className="text-right text-slate-500">Lvl {s.levelReached || 1}</div>
                       </div>
                     ))
                   )}
@@ -413,15 +548,20 @@ export default function NumNinja() {
 
               {/* Header */}
               <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full border border-slate-700 text-slate-400 text-xs font-bold">
-                  <User className="w-3 h-3" /> {playerAlias}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/[0.85] backdrop-blur-md rounded-full border border-slate-700 text-slate-300 text-xs font-bold shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+                    <User className="w-3 h-3 text-slate-400" /> {playerAlias}
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/[0.85] backdrop-blur-md rounded-full border border-cyan-500/50 text-cyan-300 text-xs font-black shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+                    <Crown className="w-3 h-3 text-yellow-400" /> {activeLevelConfig.rank} (Lvl {currentLevel})
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => shareToFacebook()}
-                    className="p-2 bg-slate-800/50 hover:bg-cyan-600/20 text-slate-400 hover:text-cyan-400 rounded-full border border-slate-700 transition-all"
+                    className="p-2 bg-slate-900/[0.85] backdrop-blur-md hover:bg-cyan-900/[0.85] text-slate-400 hover:text-cyan-400 rounded-full border border-slate-700 hover:border-cyan-500/50 transition-all shadow-[0_0_10px_rgba(0,0,0,0.5)]"
                     title="Share to Facebook"
                   >
                     <Share2 className="w-4 h-4" />
@@ -436,28 +576,28 @@ export default function NumNinja() {
               <div className="grid grid-cols-2 gap-4">
                 <motion.div
                   whileHover={{ y: -4 }}
-                  className="bg-slate-900/60 backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
+                  className="bg-slate-900/[0.85] backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
                 >
                   <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Score</span>
                   <span className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
                     <motion.span
-                      key={score}
+                      key={totalScore}
                       initial={{ scale: 1.3, color: '#67e8f9' }}
                       animate={{ scale: 1, color: '#ffffff' }}
                       className="text-3xl font-black"
                     >
-                      {score}
+                      {totalScore}
                     </motion.span>
                   </span>
                 </motion.div>
                 <motion.div
                   whileHover={{ y: -4 }}
-                  className="bg-slate-900/60 backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
+                  className="bg-slate-900/[0.85] backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
                 >
                   <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-3">Attempts</span>
                   <div className="flex gap-1.5 flex-wrap justify-center">
-                    {Array.from({ length: 10 }).map((_, i) => (
+                    {Array.from({ length: activeLevelConfig.attempts }).map((_, i) => (
                       <div
                         key={i}
                         className={`w-3 h-3 rounded-full transition-all duration-300 ${
@@ -474,7 +614,7 @@ export default function NumNinja() {
               {/* Guess Card */}
               <motion.div
                 animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
-                className={`bg-slate-900/70 backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border-2 text-center relative overflow-hidden transition-all duration-300 ${
+                className={`bg-slate-900/[0.85] backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border-2 text-center relative overflow-hidden transition-all duration-300 ${
                   proxCfg ? `${proxCfg.border} shadow-xl ${proxCfg.glow}` : 'border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
                 }`}
               >
@@ -531,22 +671,54 @@ export default function NumNinja() {
                       <Target className="w-5 h-5" /> Submit Guess
                     </motion.button>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
+                    {gameWon && currentLevel < LEVELS.length ? (
+                      <motion.button
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
                         type="button"
-                        onClick={() => setGameState('ranking')}
-                        className="py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                        onClick={startNextLevel}
+                        className="py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                       >
-                        <Trophy className="w-4 h-4 text-yellow-500" /> Ranking
-                      </button>
-                      <button
-                        type="button"
-                        onClick={startNewGame}
-                        className="py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
-                      >
-                        <RotateCcw className="w-4 h-4" /> Restart
-                      </button>
-                    </div>
+                         Next Level <ArrowUp className="w-5 h-5" />
+                      </motion.button>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={useSmokeBomb}
+                          disabled={smokeBombs <= 0 || isGameOver}
+                          className="py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-slate-800 text-slate-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-slate-600"
+                        >
+                          💨 Smoke Bomb ({smokeBombs})
+                        </button>
+                        {isGameOver && !gameWon ? (
+                          <button
+                            type="button"
+                            onClick={() => startLevel(currentLevel)}
+                            className="py-3 bg-red-900/60 hover:bg-red-800/80 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
+                          >
+                            <RotateCcw className="w-4 h-4" /> Retry Level
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { if(confirm("Restart the entire game?")) startNewRun(); }}
+                            className="py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-slate-600"
+                          >
+                            <RotateCcw className="w-4 h-4" /> Restart Run
+                          </button>
+                        )}
+                        {(totalScore > 0 || isGameOver) && (
+                          <button
+                            type="button"
+                            onClick={saveAndQuit}
+                            className="col-span-2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-slate-600"
+                          >
+                            <Trophy className="w-4 h-4 text-yellow-500" /> Save Score & Quit
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </form>
               </motion.div>
@@ -559,9 +731,9 @@ export default function NumNinja() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   className={`p-5 rounded-2xl border text-center font-bold transition-all shadow-inner ${
-                    feedback.type === 'success' ? 'bg-green-500/20 border-green-500/50 text-green-300' :
-                    feedback.type === 'warning' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300' :
-                    'bg-cyan-900/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] text-cyan-300'
+                    feedback.type === 'success' ? 'bg-green-900/[0.85] border-green-500/50 text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.4)]' :
+                    feedback.type === 'warning' ? 'bg-amber-900/[0.85] border-amber-500/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)]' :
+                    'bg-cyan-900/[0.85] border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] text-cyan-300'
                   }`}
                 >
                   <p className="leading-relaxed text-lg tracking-wide">{feedback.message}</p>
@@ -573,7 +745,7 @@ export default function NumNinja() {
                       className="flex flex-col sm:flex-row gap-3 justify-center mt-4 pt-4 border-t border-green-500/30"
                     >
                       <button
-                        onClick={() => shareToFacebook(score, attempts)}
+                        onClick={() => shareToFacebook(totalScore, attempts)}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20"
                       >
                         <Share2 className="w-4 h-4" /> Share to FB
@@ -591,7 +763,7 @@ export default function NumNinja() {
               </AnimatePresence>
 
               {/* Previous Guesses */}
-              <div className="bg-slate-900/60 backdrop-blur-md p-6 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              <div className="bg-slate-900/[0.85] backdrop-blur-md p-6 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                 <div className="text-xs font-black text-slate-500 mb-4 uppercase tracking-widest">History</div>
                 <div className="flex flex-wrap gap-2">
                   {previousGuesses.length === 0 && (

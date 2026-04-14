@@ -1,5 +1,7 @@
 import { getRequestContext } from '@cloudflare/next-on-pages';
 import { NextResponse } from 'next/server';
+import { verifySessionToken } from '../../../lib/auth';
+import { cookies } from 'next/headers';
 
 export const runtime = 'edge';
 
@@ -25,6 +27,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const sessionCookie = cookies().get('numninja_session')?.value;
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const session = await verifySessionToken(sessionCookie);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { env } = getRequestContext();
     const db = (env as any).DB;
 
@@ -32,9 +44,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
-    const { alias, score, attempts, timestamp } = await request.json();
+    const { score, attempts, timestamp } = await request.json();
 
-    if (!alias || score === undefined || attempts === undefined || !timestamp) {
+    if (score === undefined || attempts === undefined || !timestamp) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -43,7 +55,7 @@ export async function POST(request: Request) {
 
     const result = await db.prepare(
       'INSERT INTO scores (alias, score, attempts, timestamp) VALUES (?, ?, ?, ?)'
-    ).bind(alias, score, attempts, timestamp).run();
+    ).bind(session.alias, score, attempts, timestamp).run();
 
     return NextResponse.json({ success: true, id: result.meta.last_row_id });
   } catch (error) {
