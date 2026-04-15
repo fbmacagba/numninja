@@ -1243,13 +1243,22 @@ export default function NumNinja() {
                         className="mb-5 p-4 rounded-2xl border text-left"
                         style={{ background: 'rgba(127,29,29,0.25)', borderColor: 'rgba(239,68,68,0.3)' }}
                       >
-                        <div className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-2.5">How to use</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-2.5">Smoke Bomb</div>
                         <div className="flex items-start gap-3">
                           <span className="text-2xl leading-none">💨</span>
                           <div>
-                            <p className="text-sm font-black text-white">Smoke Bomb</p>
+                            <p className="text-sm font-black text-white">How to activate</p>
                             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                              During a level, tap <span className="text-slate-200 font-semibold">Smoke Bomb</span> below the input. It reveals a range around the secret number — use it when you&apos;re stuck!
+                              During a level, tap <span className="text-slate-200 font-semibold">💨 Smoke Bomb</span> below the input field whenever you feel stuck.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-start gap-3">
+                          <span className="text-2xl leading-none">🎯</span>
+                          <div>
+                            <p className="text-sm font-black text-white">What it does</p>
+                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                              The smoke clears just enough to reveal a <span className="text-orange-300 font-semibold">narrowed range</span> — the secret number is guaranteed to be within <span className="text-orange-300 font-semibold">±15%</span> of the level&apos;s total range, centered around the answer. Fewer possibilities, better odds!
                             </p>
                           </div>
                         </div>
