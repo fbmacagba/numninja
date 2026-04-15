@@ -99,6 +99,9 @@ export default function NumNinja() {
   const [windowLow, setWindowLow] = useState(1);
   const [windowHigh, setWindowHigh] = useState(100);
   const [isEndlessMode, setIsEndlessMode] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [chestState, setChestState] = useState<'closed' | 'opening' | 'open'>('closed');
+  const [lastRoundScore, setLastRoundScore] = useState(0);
 
   useEffect(() => {
     async function loadScores() {
@@ -163,6 +166,8 @@ export default function NumNinja() {
 
   const activeLevelConfig = LEVELS[currentLevel - 1] || LEVELS[0];
   const isShrinkingLevel = currentLevel >= 6;
+  // Bombs awarded on all levels during the gauntlet; in Endless Mode only on levels 6-8
+  const isBombEligible = isEndlessMode ? currentLevel >= 6 : true;
 
   const startNewRun = () => {
     setIsEndlessMode(false);
@@ -316,7 +321,11 @@ export default function NumNinja() {
 
       const newTotal = totalScore + roundScore;
       setTotalScore(newTotal);
-      setSmokeBombs(prev => prev + 1);
+
+      // Open reward chest modal instead of awarding bomb directly
+      setLastRoundScore(roundScore);
+      setChestState('closed');
+      setShowRewardModal(true);
 
       let msg = `🎉 Level Cleared! +${roundScore} pts.`;
       if (newAttempts === 1) msg = `GODLIKE INSTINCT! 🎯 First try! +${roundScore}`;
@@ -385,6 +394,37 @@ export default function NumNinja() {
        const high = Math.min(isShrinkingLevel ? windowHigh : activeLevelConfig.range, secretNumber + variance);
        setFeedback({ message: `💨 SMOKE BOMB: It's between ${low} and ${high}!`, type: 'info' });
     }
+  };
+
+  const openChest = () => {
+    setChestState('opening');
+    setTimeout(() => {
+      setChestState('open');
+      if (isBombEligible) {
+        setSmokeBombs(prev => prev + 1);
+        confetti({
+          particleCount: 100,
+          spread: 80,
+          origin: { y: 0.45 },
+          colors: ['#ef4444', '#f97316', '#fbbf24', '#a855f7', '#3b82f6'],
+          startVelocity: 35,
+          gravity: 0.9,
+        });
+      } else {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.45 },
+          colors: ['#fbbf24', '#f59e0b', '#fde68a'],
+          startVelocity: 25,
+        });
+      }
+    }, 420);
+  };
+
+  const closeRewardModal = () => {
+    setShowRewardModal(false);
+    setChestState('closed');
   };
 
   const shareToFacebook = (finalScore?: number, finalAttempts?: number) => {
@@ -967,6 +1007,297 @@ export default function NumNinja() {
           </motion.div>
         )}
 
+      </AnimatePresence>
+
+      {/* ─── REWARD CHEST MODAL ─── */}
+      <AnimatePresence>
+        {showRewardModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            style={{ background: 'rgba(2,6,23,0.92)', backdropFilter: 'blur(8px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, y: 60 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.7, opacity: 0, y: 30 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+              className="relative bg-gradient-to-b from-slate-900 to-slate-950 border border-amber-500/30 rounded-3xl px-8 pt-7 pb-8 max-w-sm w-full text-center overflow-hidden shadow-2xl shadow-amber-500/10"
+            >
+              {/* Opening flash */}
+              <AnimatePresence>
+                {chestState === 'opening' && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.85, 0] }}
+                    transition={{ duration: 0.42 }}
+                    className="absolute inset-0 bg-amber-200 rounded-3xl z-30 pointer-events-none"
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* Corner decoration */}
+              <div className="absolute top-0 left-0 w-24 h-24 bg-amber-500/5 rounded-br-full pointer-events-none" />
+              <div className="absolute bottom-0 right-0 w-24 h-24 bg-amber-500/5 rounded-tl-full pointer-events-none" />
+
+              {/* Header */}
+              <div className="mb-1 relative z-10">
+                <div className="text-xs font-black uppercase tracking-widest text-amber-400 mb-1">
+                  Level {currentLevel} — {activeLevelConfig.rank}
+                </div>
+                <motion.h2
+                  key={chestState}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-2xl font-black text-white leading-tight"
+                >
+                  {chestState === 'closed'
+                    ? '✨ A reward awaits...'
+                    : chestState === 'opening'
+                    ? '💥 Opening...'
+                    : isBombEligible
+                    ? '💥 SMOKE BOMB!'
+                    : `⭐ +${lastRoundScore.toLocaleString()} pts!`}
+                </motion.h2>
+              </div>
+
+              {/* Chest + Reward area */}
+              <div className="relative h-52 w-full flex items-end justify-center pb-2 my-3">
+
+                {/* Sparkle particles (closed state only) */}
+                <AnimatePresence>
+                  {chestState === 'closed' &&
+                    [0, 60, 120, 180, 240, 300].map((angle, i) => (
+                      <motion.span
+                        key={angle}
+                        exit={{ opacity: 0, scale: 0 }}
+                        className="absolute text-yellow-300 text-base pointer-events-none select-none"
+                        style={{
+                          top: `${42 + 36 * Math.sin((angle * Math.PI) / 180)}%`,
+                          left: `${50 + 36 * Math.cos((angle * Math.PI) / 180)}%`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                        animate={{ scale: [0.5, 1.4, 0.5], opacity: [0.2, 1, 0.2], rotate: [0, 25, 0] }}
+                        transition={{ duration: 1.8 + i * 0.1, delay: i * 0.28, repeat: Infinity }}
+                      >
+                        ✨
+                      </motion.span>
+                    ))}
+                </AnimatePresence>
+
+                {/* Reward item — floats above chest */}
+                <AnimatePresence>
+                  {chestState === 'open' && (
+                    <>
+                      {/* Radial rays */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ bottom: '40%' }}>
+                        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                          <motion.div
+                            key={deg}
+                            className="absolute w-0.5 rounded-full"
+                            style={{
+                              height: '72px',
+                              background: isBombEligible
+                                ? 'linear-gradient(to top, transparent, rgba(239,68,68,0.6))'
+                                : 'linear-gradient(to top, transparent, rgba(250,204,21,0.6))',
+                              transformOrigin: 'bottom center',
+                              transform: `rotate(${deg}deg)`,
+                              bottom: '50%',
+                            }}
+                            initial={{ scaleY: 0, opacity: 0 }}
+                            animate={{ scaleY: [0, 1, 0.6], opacity: [0, 1, 0] }}
+                            transition={{ duration: 1.1, delay: (deg / 360) * 0.3 }}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Reward emoji */}
+                      <motion.div
+                        className="absolute select-none z-40"
+                        style={{
+                          fontSize: '5rem',
+                          top: '2%',
+                          left: '50%',
+                          x: '-50%',
+                          filter: isBombEligible
+                            ? 'drop-shadow(0 0 22px rgba(239,68,68,0.9)) drop-shadow(0 0 8px rgba(239,68,68,0.6))'
+                            : 'drop-shadow(0 0 22px rgba(250,204,21,0.9))',
+                        }}
+                        initial={{ y: 80, scale: 0, rotate: -25 }}
+                        animate={{ y: 0, scale: [0, 1.35, 1], rotate: [-25, 12, 0] }}
+                        transition={{ type: 'spring', stiffness: 480, damping: 18, delay: 0.12 }}
+                      >
+                        {isBombEligible ? '💣' : '⭐'}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+
+                {/* CSS Chest */}
+                <div
+                  className={`relative flex flex-col items-center z-20 ${chestState === 'closed' ? 'cursor-pointer' : ''}`}
+                  style={{ perspective: '700px' }}
+                  onClick={chestState === 'closed' ? openChest : undefined}
+                >
+                  {/* Ground glow */}
+                  <div className={`absolute -bottom-3 w-32 h-5 rounded-full blur-xl transition-all duration-700 ${
+                    chestState === 'closed' ? 'bg-amber-500/50' : chestState === 'open' ? 'bg-amber-500/10' : 'bg-amber-400/70'
+                  }`} />
+
+                  {/* Lid */}
+                  <motion.div
+                    className="relative w-32 h-14 rounded-t-2xl border-[3px] border-amber-400 z-20 overflow-hidden"
+                    style={{
+                      transformOrigin: 'center bottom',
+                      background: 'linear-gradient(to bottom, #fbbf24 0%, #d97706 50%, #92400e 100%)',
+                    }}
+                    animate={chestState !== 'closed' ? { rotateX: -130, opacity: 0 } : { rotateX: 0, opacity: 1 }}
+                    transition={{ duration: 0.38, ease: 'easeIn' }}
+                    whileHover={chestState === 'closed' ? { scale: 1.04 } : {}}
+                  >
+                    <div className="absolute top-2 inset-x-4 h-[3px] bg-amber-200/40 rounded-full" />
+                    <div className="absolute top-5 inset-x-4 h-[3px] bg-amber-200/30 rounded-full" />
+                    <div className="absolute top-8 inset-x-4 h-[3px] bg-amber-200/20 rounded-full" />
+                    <div className="absolute top-2 left-2 w-2.5 h-2.5 rounded-full bg-yellow-300/70 border border-yellow-200/50 shadow-sm" />
+                    <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-yellow-300/70 border border-yellow-200/50 shadow-sm" />
+                  </motion.div>
+
+                  {/* Gold band */}
+                  <div className="relative w-36 h-4 z-30 -my-0.5"
+                    style={{ background: 'linear-gradient(to right, #92400e, #fde68a, #f59e0b, #fde68a, #92400e)' }}
+                  >
+                    <div className="absolute inset-y-0.5 inset-x-0 border-y border-yellow-200/30" />
+                  </div>
+
+                  {/* Body */}
+                  <div
+                    className="relative w-32 h-20 rounded-b-2xl border-[3px] border-t-0 border-amber-600 z-20 overflow-hidden"
+                    style={{ background: 'linear-gradient(to bottom, #92400e 0%, #78350f 40%, #451a03 100%)' }}
+                  >
+                    <div className="absolute top-3 inset-x-3 h-px bg-amber-700/60 rounded-full" />
+                    <div className="absolute top-7 inset-x-3 h-px bg-amber-700/50 rounded-full" />
+                    <div className="absolute top-11 inset-x-3 h-px bg-amber-700/40 rounded-full" />
+                    {/* Keyhole */}
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 border-yellow-500/60 flex items-center justify-center"
+                      style={{ background: '#1c0a00' }}>
+                      <div className="w-2 h-2 rounded-full bg-yellow-600/50" />
+                    </div>
+                    <div className="absolute top-8 left-1/2 -translate-x-[5px] w-2.5 h-4 rounded-b border-2 border-t-0 border-yellow-500/60"
+                      style={{ background: '#1c0a00' }} />
+                    {/* Corner rivets */}
+                    <div className="absolute top-2 left-2 w-2.5 h-2.5 rounded-full bg-yellow-500/50 border border-yellow-400/40" />
+                    <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-yellow-500/50 border border-yellow-400/40" />
+                    <div className="absolute bottom-2 left-2 w-2.5 h-2.5 rounded-full bg-yellow-500/50 border border-yellow-400/40" />
+                    <div className="absolute bottom-2 right-2 w-2.5 h-2.5 rounded-full bg-yellow-500/50 border border-yellow-400/40" />
+                  </div>
+
+                  {/* Hover glow ring (closed only) */}
+                  {chestState === 'closed' && (
+                    <motion.div
+                      className="absolute inset-0 rounded-2xl border-2 border-amber-400/0 pointer-events-none"
+                      animate={{ borderColor: ['rgba(251,191,36,0)', 'rgba(251,191,36,0.5)', 'rgba(251,191,36,0)'] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* "Tap to open" (closed state) */}
+              <AnimatePresence>
+                {chestState === 'closed' && (
+                  <motion.div
+                    exit={{ opacity: 0, y: -6 }}
+                    className="mb-5"
+                  >
+                    <motion.button
+                      onClick={openChest}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      animate={{ opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 1.6, repeat: Infinity }}
+                      className="text-amber-300 font-black text-sm uppercase tracking-widest flex items-center gap-2 mx-auto"
+                    >
+                      <span>👆</span> Tap the chest to open!
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Reward info (open state) */}
+              <AnimatePresence>
+                {chestState === 'open' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45 }}
+                    className="relative z-10"
+                  >
+                    {isBombEligible ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.94 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.55 }}
+                        className="mb-5 p-4 rounded-2xl border text-left"
+                        style={{ background: 'rgba(127,29,29,0.25)', borderColor: 'rgba(239,68,68,0.3)' }}
+                      >
+                        <div className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-2.5">How to use</div>
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl leading-none">💨</span>
+                          <div>
+                            <p className="text-sm font-black text-white">Smoke Bomb</p>
+                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                              During a level, tap <span className="text-slate-200 font-semibold">Smoke Bomb</span> below the input. It reveals a range around the secret number — use it when you&apos;re stuck!
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-red-500/20 flex items-center gap-2">
+                          <span className="text-xs text-slate-500">You now have</span>
+                          <span className="font-black text-white text-base">{smokeBombs}</span>
+                          <span className="text-xs text-slate-500">💨 smoke bomb{smokeBombs !== 1 ? 's' : ''}</span>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.94 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.55 }}
+                        className="mb-5 p-4 rounded-2xl border text-center"
+                        style={{ background: 'rgba(120,53,15,0.2)', borderColor: 'rgba(245,158,11,0.25)' }}
+                      >
+                        <p className="font-black text-yellow-300 text-lg">+{lastRoundScore.toLocaleString()} pts</p>
+                        <p className="text-xs text-slate-400 mt-1">Smoke Bombs are reserved for levels 6–8. Reach them to claim one!</p>
+                      </motion.div>
+                    )}
+
+                    <motion.button
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.72 }}
+                      onClick={closeRewardModal}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      className={`w-full py-4 font-black rounded-2xl transition-all text-white text-lg tracking-wide ${
+                        isBombEligible
+                          ? 'shadow-[0_0_24px_rgba(239,68,68,0.45)]'
+                          : 'shadow-[0_0_24px_rgba(245,158,11,0.35)]'
+                      }`}
+                      style={{
+                        background: isBombEligible
+                          ? 'linear-gradient(to right, #dc2626, #ea580c)'
+                          : 'linear-gradient(to right, #d97706, #ca8a04)',
+                      }}
+                    >
+                      Continue →
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
