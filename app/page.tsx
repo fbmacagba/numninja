@@ -6,13 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
 const LEVELS = [
-  { level: 1, rank: 'Novice',      range: 10,   attempts: 4,  theme: 'cyan'   },
-  { level: 2, rank: 'Apprentice',  range: 20,   attempts: 4,  theme: 'cyan'   },
-  { level: 3, rank: 'Warrior',     range: 50,   attempts: 6,  theme: 'indigo' },
-  { level: 4, rank: 'Ninja',       range: 100,  attempts: 7,  theme: 'purple' },
-  { level: 5, rank: 'Assassin',    range: 200,  attempts: 8,  theme: 'amber'  },
-  { level: 6, rank: 'Shadow',      range: 500,  attempts: 9,  theme: 'orange' },
-  { level: 7, rank: 'Grandmaster', range: 1000, attempts: 10, theme: 'red'    },
+  { level: 1, rank: 'Novice',      range: 10,   attempts: 4,  theme: 'cyan'    },
+  { level: 2, rank: 'Apprentice',  range: 20,   attempts: 4,  theme: 'cyan'    },
+  { level: 3, rank: 'Warrior',     range: 50,   attempts: 6,  theme: 'indigo'  },
+  { level: 4, rank: 'Ninja',       range: 100,  attempts: 7,  theme: 'purple'  },
+  { level: 5, rank: 'Assassin',    range: 200,  attempts: 8,  theme: 'amber'   },
+  { level: 6, rank: 'Shadow',      range: 500,  attempts: 9,  theme: 'orange'  },
+  { level: 7, rank: 'Grandmaster', range: 1000, attempts: 10, theme: 'red'     },
+  { level: 8, rank: 'Phantom',     range: 2000, attempts: 11, theme: 'fuchsia' },
 ];
 
 type ScoreEntry = {
@@ -73,7 +74,7 @@ function FloatingNumbers() {
 }
 
 export default function NumNinja() {
-  const [gameState, setGameState] = useState<'login' | 'game' | 'ranking'>('login');
+  const [gameState, setGameState] = useState<'login' | 'game' | 'ranking' | 'level_select'>('login');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [playerAlias, setPlayerAlias] = useState('');
   const [password, setPassword] = useState('');
@@ -97,6 +98,7 @@ export default function NumNinja() {
   const [guessDir, setGuessDir] = useState<'higher' | 'lower' | null>(null);
   const [windowLow, setWindowLow] = useState(1);
   const [windowHigh, setWindowHigh] = useState(100);
+  const [isEndlessMode, setIsEndlessMode] = useState(false);
 
   useEffect(() => {
     async function loadScores() {
@@ -163,6 +165,7 @@ export default function NumNinja() {
   const isShrinkingLevel = currentLevel >= 6;
 
   const startNewRun = () => {
+    setIsEndlessMode(false);
     setCurrentLevel(1);
     setTotalScore(0);
     setSmokeBombs(0);
@@ -228,6 +231,7 @@ export default function NumNinja() {
   };
 
   const startLevel = (levelIndex: number) => {
+    setCurrentLevel(levelIndex);
     const config = LEVELS[levelIndex - 1];
     setSecretNumber(Math.floor(Math.random() * config.range) + 1);
     setAttempts(0);
@@ -320,8 +324,8 @@ export default function NumNinja() {
 
       setFeedback({ message: msg, type: 'success' });
 
-      if (currentLevel === LEVELS.length) {
-        saveScore(newTotal, newAttempts, currentLevel); // gauntlet finished
+      if (currentLevel === LEVELS.length || isEndlessMode) {
+        saveScore(newTotal, newAttempts, currentLevel);
       }
     } else if (newAttempts >= activeLevelConfig.attempts) {
       playSfx('fail');
@@ -594,6 +598,69 @@ export default function NumNinja() {
           </motion.div>
         )}
 
+        {/* ─── LEVEL SELECT (ENDLESS MODE) ─── */}
+        {gameState === 'level_select' && (
+          <motion.div
+            key="level_select"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-screen p-6 md:p-12 flex flex-col items-center relative z-10"
+          >
+            <div className="max-w-2xl w-full">
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="text-6xl mb-3">🔥</div>
+                <h1 className="text-4xl font-black bg-gradient-to-r from-violet-400 via-fuchsia-400 to-orange-400 bg-clip-text text-transparent mb-2 tracking-tight">
+                  ENDLESS MODE
+                </h1>
+                <p className="text-slate-400 mb-4">Gauntlet complete! Score keeps accumulating — pick your next challenge.</p>
+                <div className="inline-flex items-center gap-2 px-6 py-2 bg-cyan-900/30 border border-cyan-500/40 rounded-full">
+                  <Trophy className="w-4 h-4 text-yellow-400" />
+                  <span className="font-black text-cyan-300 text-lg">{totalScore.toLocaleString()} pts</span>
+                </div>
+              </div>
+
+              {/* Level Cards */}
+              <div className="grid gap-3 mb-6">
+                {LEVELS.map((lvl) => (
+                  <motion.button
+                    key={lvl.level}
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => startLevel(lvl.level)}
+                    className="flex items-center justify-between p-5 bg-slate-900/[0.85] backdrop-blur-md rounded-2xl border border-slate-700 hover:border-cyan-500/50 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-cyan-900/50 flex items-center justify-center font-black text-lg text-slate-300 transition-all border border-slate-700 group-hover:border-cyan-500/40">
+                        {lvl.level}
+                      </div>
+                      <div>
+                        <div className="font-black text-white text-base">{lvl.rank}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          1–{lvl.range.toLocaleString()} · {lvl.attempts} attempts
+                          {lvl.level >= 6 && <span className="ml-1 text-amber-500">· 🪟 Shrinking window</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-slate-600 group-hover:text-cyan-400 transition-colors font-bold text-sm pr-1">
+                      PLAY →
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Save & Quit */}
+              <button
+                onClick={saveAndQuit}
+                className="w-full py-4 bg-slate-900/[0.85] hover:bg-slate-800/[0.85] border border-slate-700 hover:border-yellow-500/40 rounded-2xl font-bold text-slate-300 flex items-center justify-center gap-2 transition-all"
+              >
+                <Trophy className="w-5 h-5 text-yellow-500" /> Save Score &amp; View Leaderboard
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* ─── GAME ─── */}
         {gameState === 'game' && (
           <motion.div
@@ -768,6 +835,26 @@ export default function NumNinja() {
                         className="py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                       >
                          Next Level <ArrowUp className="w-5 h-5" />
+                      </motion.button>
+                    ) : gameWon && !isEndlessMode ? (
+                      <motion.button
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        type="button"
+                        onClick={() => { setIsEndlessMode(true); setGameState('level_select'); }}
+                        className="py-4 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(139,92,246,0.5)]"
+                      >
+                        🔥 Enter Endless Mode
+                      </motion.button>
+                    ) : gameWon && isEndlessMode ? (
+                      <motion.button
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        type="button"
+                        onClick={() => setGameState('level_select')}
+                        className="py-4 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(249,115,22,0.4)]"
+                      >
+                        🎯 Pick Next Level
                       </motion.button>
                     ) : (
                       <div className="grid grid-cols-2 gap-4">
