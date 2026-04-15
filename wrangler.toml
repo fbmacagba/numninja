@@ -1,15 +1,9 @@
 name = "numninja"
-type = "javascript"
-main = "dist/index.js"
+pages_build_output_dir = ".vercel/output/static"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
 
 [[d1_databases]]
-binding = "DB"
-database_name = "numninja-db"
-database_id = "ded53b32-4b3d-473e-aecb-b570c2f5c043"
-
-[env.production]
-name = "numninja-prod"
-[[env.production.d1_databases]]
 binding = "DB"
 database_name = "numninja-db"
 database_id = "ded53b32-4b3d-473e-aecb-b570c2f5c043"
