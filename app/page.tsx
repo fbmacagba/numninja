@@ -102,8 +102,13 @@ export default function NumNinja() {
         const response = await fetch('/api/scores');
         if (response.ok) {
           const apiScores = await response.json();
-          setHighScores(apiScores);
-          localStorage.setItem('numninja_scores', JSON.stringify(apiScores));
+          // Map DB snake_case to frontend camelCase if needed
+          const mappedScores = apiScores.map((s: any) => ({
+            ...s,
+            levelReached: s.level_reached || s.levelReached || 1
+          }));
+          setHighScores(mappedScores);
+          localStorage.setItem('numninja_scores', JSON.stringify(mappedScores));
         } else {
           throw new Error('API returned non-ok status');
         }
@@ -183,6 +188,11 @@ export default function NumNinja() {
         return;
       }
 
+      // Use the canonical casing from the database
+      if (data.alias) {
+        setPlayerAlias(data.alias);
+      }
+
       startNewRun();
     } catch (err) {
       setAliasError('Network error, please try again.');
@@ -237,14 +247,22 @@ export default function NumNinja() {
       attempts: finalAttempts,
       timestamp: new Date().toISOString(),
     };
-    const updatedScores = [...highScores, newScore].sort((a, b) => b.score - a.score).slice(0, 50);
+    // Keep only the best score per alias (one entry per player)
+    const existing = highScores.find(s => s.alias === playerAlias);
+    const updatedScores = (existing && existing.score >= finalScore
+      ? highScores
+      : [...highScores.filter(s => s.alias !== playerAlias), newScore]
+    ).sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
     localStorage.setItem('numninja_scores', JSON.stringify(updatedScores));
     try {
       const response = await fetch('/api/scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newScore),
+        body: JSON.stringify({
+          ...newScore,
+          level_reached: levelReached // Match API requirement
+        }),
       });
       if (!response.ok) console.warn('Failed to save score to server, using localStorage only');
     } catch (error) {

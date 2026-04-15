@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     const { results } = await db.prepare(
-      'SELECT id, alias, score, attempts, timestamp FROM scores ORDER BY score DESC LIMIT 50'
+      'SELECT id, alias, score, attempts, level_reached, timestamp FROM scores ORDER BY score DESC LIMIT 50'
     ).all();
 
     return NextResponse.json(results || []);
@@ -44,18 +44,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
-    const { score, attempts, timestamp } = await request.json();
+    const { score, attempts, level_reached, timestamp } = await request.json();
 
-    if (score === undefined || attempts === undefined || !timestamp) {
+    if (score === undefined || attempts === undefined || level_reached === undefined || !timestamp) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
+    // Upsert: insert or update only if the new score is higher than the existing one
+    // alias unique constraint handles the conflict.
     const result = await db.prepare(
-      'INSERT INTO scores (alias, score, attempts, timestamp) VALUES (?, ?, ?, ?)'
-    ).bind(session.alias, score, attempts, timestamp).run();
+      `INSERT INTO scores (alias, score, attempts, level_reached, timestamp)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(alias) DO UPDATE SET
+         score          = CASE WHEN excluded.score > scores.score THEN excluded.score ELSE scores.score END,
+         attempts       = CASE WHEN excluded.score > scores.score THEN excluded.attempts ELSE scores.attempts END,
+         level_reached  = CASE WHEN excluded.score > scores.score THEN excluded.level_reached ELSE scores.level_reached END,
+         timestamp      = CASE WHEN excluded.score > scores.score THEN excluded.timestamp ELSE scores.timestamp END`
+    ).bind(session.alias.trim(), score, attempts, level_reached, timestamp).run();
 
     return NextResponse.json({ success: true, id: result.meta.last_row_id });
   } catch (error) {

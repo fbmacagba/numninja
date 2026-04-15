@@ -13,6 +13,7 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   const attemptHash = await hashPassword(password);
+  // Using a simple comparison is safe here as we're comparing domestic hashes
   return attemptHash === storedHash;
 }
 

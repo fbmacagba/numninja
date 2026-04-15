@@ -22,8 +22,8 @@ export async function POST(request: Request) {
 
     const normalizedAlias = alias.trim();
 
-    // Check if alias exists
-    const existing = await db.prepare('SELECT id FROM users WHERE LOWER(alias) = LOWER(?)')
+    // Check if alias exists (using NOCASE collection in DB handles casing)
+    const existing = await db.prepare('SELECT id FROM users WHERE alias = ?')
       .bind(normalizedAlias).first();
 
     if (existing) {

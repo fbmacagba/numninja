@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const normalizedAlias = alias.trim();
 
     // Fetch user
-    const user = await db.prepare('SELECT id, password_hash FROM users WHERE LOWER(alias) = LOWER(?)')
+    const user = await db.prepare('SELECT id, alias, password_hash FROM users WHERE alias = ? COLLATE NOCASE')
       .bind(normalizedAlias).first();
 
     if (!user) {
@@ -36,8 +36,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid alias or password' }, { status: 401 });
     }
 
+    // Canonical alias from DB (preserve original casing)
+    const canonicalAlias = user.alias as string;
+
     // Issue JWT
-    const token = await signSessionToken({ id: user.id as number, alias: normalizedAlias });
+    const token = await signSessionToken({ id: user.id as number, alias: canonicalAlias });
     
     cookies().set('numninja_session', token, {
       httpOnly: true,
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
       path: '/',
     });
 
-    return NextResponse.json({ success: true, alias: normalizedAlias });
+    return NextResponse.json({ success: true, alias: canonicalAlias });
   } catch (error) {
     console.error('Login Error:', error);
     return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 });
