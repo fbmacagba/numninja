@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid alias or password' }, { status: 401 });
     }
 
-    // Canonical alias from DB (preserve original casing)
-    const canonicalAlias = user.alias as string;
+    // Canonical alias from DB (preserve original casing, but ensure no trailing spaces)
+    const canonicalAlias = (user.alias as string).trim();
 
     // Issue JWT
     const token = await signSessionToken({ id: user.id as number, alias: canonicalAlias });
