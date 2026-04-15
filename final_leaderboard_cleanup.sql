@@ -11,14 +11,15 @@ CREATE TABLE IF NOT EXISTS scores_clean (
   timestamp      TEXT NOT NULL
 );
 
--- 2. Consolidate rows: Trim spaces and pick the MAX score/level reached for each unique name
+-- 2. Consolidate rows: Trim spaces and pick the MAX score for each unique name.
+-- level_reached defaults to 1 for rows migrated from the old schema (column didn't exist).
 -- We use MIN(attempts) as a tie-breaker for the same score.
 INSERT INTO scores_clean (alias, score, attempts, level_reached, timestamp)
-SELECT 
-    TRIM(alias) as clean_alias, 
-    MAX(score) as best_score, 
-    MIN(attempts) as best_attempts, 
-    MAX(level_reached) as best_level, 
+SELECT
+    TRIM(alias) as clean_alias,
+    MAX(score) as best_score,
+    MIN(attempts) as best_attempts,
+    1 as best_level,
     MAX(timestamp) as latest_time
 FROM scores
 GROUP BY clean_alias;

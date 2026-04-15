@@ -6,13 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
 const LEVELS = [
-  { level: 1, rank: 'Novice', range: 10, attempts: 4, theme: 'cyan' },
-  { level: 2, rank: 'Apprentice', range: 20, attempts: 5, theme: 'cyan' },
-  { level: 3, rank: 'Warrior', range: 50, attempts: 7, theme: 'indigo' },
-  { level: 4, rank: 'Ninja', range: 100, attempts: 10, theme: 'purple' },
-  { level: 5, rank: 'Assassin', range: 200, attempts: 12, theme: 'amber' },
-  { level: 6, rank: 'Shadow', range: 500, attempts: 15, theme: 'orange' },
-  { level: 7, rank: 'Grandmaster', range: 1000, attempts: 20, theme: 'red' }
+  { level: 1, rank: 'Novice',      range: 10,   attempts: 4,  theme: 'cyan'   },
+  { level: 2, rank: 'Apprentice',  range: 20,   attempts: 4,  theme: 'cyan'   },
+  { level: 3, rank: 'Warrior',     range: 50,   attempts: 6,  theme: 'indigo' },
+  { level: 4, rank: 'Ninja',       range: 100,  attempts: 7,  theme: 'purple' },
+  { level: 5, rank: 'Assassin',    range: 200,  attempts: 8,  theme: 'amber'  },
+  { level: 6, rank: 'Shadow',      range: 500,  attempts: 9,  theme: 'orange' },
+  { level: 7, rank: 'Grandmaster', range: 1000, attempts: 10, theme: 'red'    },
 ];
 
 type ScoreEntry = {
@@ -95,6 +95,8 @@ export default function NumNinja() {
   const [isLoadingScores, setIsLoadingScores] = useState(true);
   const [proximity, setProximity] = useState<Proximity>(null);
   const [guessDir, setGuessDir] = useState<'higher' | 'lower' | null>(null);
+  const [windowLow, setWindowLow] = useState(1);
+  const [windowHigh, setWindowHigh] = useState(100);
 
   useEffect(() => {
     async function loadScores() {
@@ -158,6 +160,7 @@ export default function NumNinja() {
   };
 
   const activeLevelConfig = LEVELS[currentLevel - 1] || LEVELS[0];
+  const isShrinkingLevel = currentLevel >= 6;
 
   const startNewRun = () => {
     setCurrentLevel(1);
@@ -234,6 +237,8 @@ export default function NumNinja() {
     setGameWon(false);
     setProximity(null);
     setGuessDir(null);
+    setWindowLow(1);
+    setWindowHigh(config.range);
     setStartTime(Date.now());
     setFeedback({ message: `Level ${config.level} (${config.rank}). Ready, ${playerAlias}! Guess 1-${config.range}.`, type: 'info' });
     setGameState('game');
@@ -277,6 +282,10 @@ export default function NumNinja() {
       setFeedback({ message: `Enter a valid number (1-${activeLevelConfig.range})!`, type: 'warning' });
       return;
     }
+    if (isShrinkingLevel && (numGuess < windowLow || numGuess > windowHigh)) {
+      setFeedback({ message: `🪟 Window locked: ${windowLow}–${windowHigh}!`, type: 'warning' });
+      return;
+    }
 
     const newAttempts = attempts + 1;
     setAttempts(newAttempts);
@@ -295,12 +304,12 @@ export default function NumNinja() {
       setGuessDir(null);
       playSfx('win');
       triggerVictoryEffects();
-      
+
       const basePoints = activeLevelConfig.range * 10;
       const attemptMultiplier = ((activeLevelConfig.attempts - newAttempts) * basePoints) / 10;
       let roundScore = basePoints + attemptMultiplier;
       if (isSpeedBonus) roundScore = Math.floor(roundScore * 1.5);
-      
+
       const newTotal = totalScore + roundScore;
       setTotalScore(newTotal);
       setSmokeBombs(prev => prev + 1);
@@ -310,7 +319,7 @@ export default function NumNinja() {
       else if (isSpeedBonus) msg = `⚡ Speed Demon! +50% Bonus! +${roundScore}`;
 
       setFeedback({ message: msg, type: 'success' });
-      
+
       if (currentLevel === LEVELS.length) {
         saveScore(newTotal, newAttempts, currentLevel); // gauntlet finished
       }
@@ -321,24 +330,42 @@ export default function NumNinja() {
       setProximity(null);
       setGuessDir(null);
       setFeedback({ message: `💀 LEVEL FAILED. The number was ${secretNumber}.`, type: 'warning' });
-      // In unlock mode, we don't save score on failure, they just retry.
     } else {
       playSfx('wrong');
       const distance = Math.abs(numGuess - secretNumber);
-      setProximity(getProximity(distance));
+      // Proximity hints only on levels 1–3; higher levels give direction only
+      if (currentLevel <= 3) setProximity(getProximity(distance));
       setGuessDir(numGuess < secretNumber ? 'higher' : 'lower');
       setShake(true);
       setTimeout(() => setShake(false), 500);
 
       const attemptsLeft = activeLevelConfig.attempts - newAttempts;
+
+      // Shrinking window: compress the allowed range every 3rd wrong guess on levels 6+
+      let shrinkMsg = '';
+      if (isShrinkingLevel && newAttempts % 3 === 0) {
+        const updatedGuesses = [...previousGuesses, { value: numGuess, result }];
+        let logicLow = 1, logicHigh = activeLevelConfig.range;
+        updatedGuesses.forEach(g => {
+          if (g.result === 'low')  logicLow  = Math.max(logicLow,  g.value + 1);
+          if (g.result === 'high') logicHigh = Math.min(logicHigh, g.value - 1);
+        });
+        const logicWidth = logicHigh - logicLow + 1;
+        const newWindowWidth = Math.max(1, Math.ceil(logicWidth * 0.5));
+        const minStart = Math.max(logicLow, secretNumber - newWindowWidth + 1);
+        const maxStart = Math.min(logicHigh - newWindowWidth + 1, secretNumber);
+        const windowStart = minStart + Math.floor(Math.random() * (Math.max(0, maxStart - minStart) + 1));
+        const windowEnd = windowStart + newWindowWidth - 1;
+        setWindowLow(windowStart);
+        setWindowHigh(windowEnd);
+        shrinkMsg = ` 🪟 WINDOW SHRINKS: ${windowStart}–${windowEnd}!`;
+      }
+
       if (attemptsLeft === 1) {
-         setFeedback({ message: 'Focus... your life depends on it. 🧘‍♂️ (1 try left!)', type: 'warning' });
+        setFeedback({ message: `Focus... your life depends on it. 🧘‍♂️ (1 try left!)${shrinkMsg}`, type: 'warning' });
       } else {
-         if (numGuess < secretNumber) {
-           setFeedback({ message: '⬆️ TOO LOW! Go higher!', type: 'warning' });
-         } else {
-           setFeedback({ message: '⬇️ TOO HIGH! Go lower!', type: 'warning' });
-         }
+        const dir = numGuess < secretNumber ? '⬆️ TOO LOW! Go higher!' : '⬇️ TOO HIGH! Go lower!';
+        setFeedback({ message: `${dir}${shrinkMsg}`, type: 'warning' });
       }
     }
 
@@ -350,8 +377,8 @@ export default function NumNinja() {
        playSfx('smoke');
        setSmokeBombs(prev => prev - 1);
        const variance = Math.max(2, Math.floor(activeLevelConfig.range * 0.15));
-       const low = Math.max(1, secretNumber - variance);
-       const high = Math.min(activeLevelConfig.range, secretNumber + variance);
+       const low = Math.max(isShrinkingLevel ? windowLow : 1, secretNumber - variance);
+       const high = Math.min(isShrinkingLevel ? windowHigh : activeLevelConfig.range, secretNumber + variance);
        setFeedback({ message: `💨 SMOKE BOMB: It's between ${low} and ${high}!`, type: 'info' });
     }
   };
@@ -678,7 +705,25 @@ export default function NumNinja() {
                   )}
                 </AnimatePresence>
 
-                <p className="mb-6 text-slate-400 font-medium">What is the secret number?</p>
+                <p className="mb-4 text-slate-400 font-medium">What is the secret number?</p>
+
+                {isShrinkingLevel && !isGameOver && (
+                  <motion.div
+                    key={`${windowLow}-${windowHigh}`}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mb-4 flex items-center justify-center gap-2"
+                  >
+                    <span className={`px-4 py-1.5 rounded-full text-xs font-black border ${
+                      attempts > 0 && attempts % 3 === 2
+                        ? 'bg-red-900/40 border-red-500/60 text-red-300'
+                        : 'bg-amber-900/30 border-amber-500/40 text-amber-300'
+                    }`}>
+                      🪟 Window: {windowLow}–{windowHigh}
+                      {attempts > 0 && attempts % 3 === 2 && ' ⚠️ Shrinks next!'}
+                    </span>
+                  </motion.div>
+                )}
 
                 <form onSubmit={handleGuess} className="flex flex-col gap-6 relative z-10">
                   <div className="relative group">
@@ -687,6 +732,8 @@ export default function NumNinja() {
                       value={guess}
                       onChange={(e) => setGuess(e.target.value)}
                       disabled={isGameOver}
+                      min={isShrinkingLevel ? windowLow : 1}
+                      max={isShrinkingLevel ? windowHigh : activeLevelConfig.range}
                       className="w-full text-center text-5xl font-black p-6 rounded-3xl bg-slate-900/80 border-2 border-slate-700 text-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/40 outline-none transition-all placeholder:text-slate-800"
                       placeholder="?"
                       autoFocus
