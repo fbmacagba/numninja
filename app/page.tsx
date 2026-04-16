@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share2, Copy, Check, ArrowUp, ArrowDown, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -102,6 +102,13 @@ export default function NumNinja() {
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [chestState, setChestState] = useState<'closed' | 'opening' | 'open'>('closed');
   const [lastRoundScore, setLastRoundScore] = useState(0);
+  const [playerBaseScore, setPlayerBaseScore] = useState(0);
+  const [displayedCumulativeScore, setDisplayedCumulativeScore] = useState(0);
+  const [scoreGainVisible, setScoreGainVisible] = useState(false);
+  const [scoreGainAmount, setScoreGainAmount] = useState(0);
+  const scoreAnimFrameRef = useRef<number | null>(null);
+  const scoreGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function loadScores() {
@@ -133,6 +140,47 @@ export default function NumNinja() {
       setIsLoadingScores(false);
     }
     loadScores();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (scoreAnimFrameRef.current !== null) cancelAnimationFrame(scoreAnimFrameRef.current);
+      if (scoreGainTimerRef.current) clearTimeout(scoreGainTimerRef.current);
+      if (modalTimerRef.current) clearTimeout(modalTimerRef.current);
+    };
+  }, []);
+
+  const cumulativeScore = playerBaseScore + totalScore;
+
+  const animateScoreCounter = useCallback((from: number, to: number) => {
+    if (scoreAnimFrameRef.current !== null) cancelAnimationFrame(scoreAnimFrameRef.current);
+    const duration = 1400;
+    const startTime = performance.now();
+    const diff = to - from;
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      if (progress >= 1) {
+        setDisplayedCumulativeScore(to);
+        scoreAnimFrameRef.current = null;
+        return;
+      }
+      const jitterEnd = 0.6;
+      let value: number;
+      if (progress < jitterEnd) {
+        const t = progress / jitterEnd;
+        const base = from + diff * t;
+        const jitter = diff * 0.25 * (1 - t) * (Math.random() - 0.5) * 2;
+        value = Math.max(from, Math.min(to, Math.round(base + jitter)));
+      } else {
+        const t = (progress - jitterEnd) / (1 - jitterEnd);
+        const eased = 1 - Math.pow(1 - t, 3);
+        value = Math.round(from + diff * (jitterEnd + (1 - jitterEnd) * eased));
+      }
+      setDisplayedCumulativeScore(value);
+      scoreAnimFrameRef.current = requestAnimationFrame(tick);
+    };
+    scoreAnimFrameRef.current = requestAnimationFrame(tick);
   }, []);
 
   const triggerVictoryEffects = () => {
@@ -169,11 +217,15 @@ export default function NumNinja() {
   // Bombs awarded on all levels during the gauntlet; in Endless Mode only on levels 6-8
   const isBombEligible = isEndlessMode ? currentLevel >= 6 : true;
 
-  const startNewRun = () => {
+  const startNewRun = (baseScore?: number) => {
     setIsEndlessMode(false);
     setCurrentLevel(1);
     setTotalScore(0);
     setSmokeBombs(0);
+    if (baseScore !== undefined) {
+      setPlayerBaseScore(baseScore);
+      setDisplayedCumulativeScore(baseScore);
+    }
     startLevel(1);
   };
 
@@ -204,7 +256,11 @@ export default function NumNinja() {
         setPlayerAlias(data.alias);
       }
 
-      startNewRun();
+      // Load existing score as base for cumulative scoring
+      const canonAlias = (data.alias || normalized).toLowerCase();
+      const existingEntry = highScores.find(s => s.alias.toLowerCase() === canonAlias);
+      const base = existingEntry?.score ?? 0;
+      startNewRun(base);
     } catch (err) {
       setAliasError('Network error, please try again.');
     }
@@ -231,7 +287,7 @@ export default function NumNinja() {
   };
 
   const saveAndQuit = () => {
-    saveScore(totalScore, 0, currentLevel);
+    saveScore(cumulativeScore, 0, currentLevel);
     setGameState('ranking');
   };
 
@@ -261,12 +317,9 @@ export default function NumNinja() {
       attempts: finalAttempts,
       timestamp: new Date().toISOString(),
     };
-    // Keep only the best score per alias (one entry per player)
-    const existing = highScores.find(s => s.alias === playerAlias);
-    const updatedScores = (existing && existing.score >= finalScore
-      ? highScores
-      : [...highScores.filter(s => s.alias !== playerAlias), newScore]
-    ).sort((a, b) => b.score - a.score).slice(0, 50);
+    // Always replace — cumulative score always increases
+    const updatedScores = [...highScores.filter(s => s.alias !== playerAlias), newScore]
+      .sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
     localStorage.setItem('numninja_scores', JSON.stringify(updatedScores));
     try {
@@ -320,12 +373,20 @@ export default function NumNinja() {
       if (isSpeedBonus) roundScore = Math.floor(roundScore * 1.5);
 
       const newTotal = totalScore + roundScore;
+      const prevCumulative = playerBaseScore + totalScore;
+      const newCumulative = playerBaseScore + newTotal;
       setTotalScore(newTotal);
-
-      // Open reward chest modal instead of awarding bomb directly
       setLastRoundScore(roundScore);
       setChestState('closed');
-      setShowRewardModal(true);
+
+      // Score gain animation: badge appears, roulette counter fires, then modal opens
+      setScoreGainAmount(roundScore);
+      setScoreGainVisible(true);
+      if (scoreGainTimerRef.current) clearTimeout(scoreGainTimerRef.current);
+      if (modalTimerRef.current) clearTimeout(modalTimerRef.current);
+      scoreGainTimerRef.current = setTimeout(() => setScoreGainVisible(false), 1800);
+      setTimeout(() => animateScoreCounter(prevCumulative, newCumulative), 600);
+      modalTimerRef.current = setTimeout(() => setShowRewardModal(true), 2100);
 
       let msg = `🎉 Level Cleared! +${roundScore} pts.`;
       if (newAttempts === 1) msg = `GODLIKE INSTINCT! 🎯 First try! +${roundScore}`;
@@ -333,9 +394,8 @@ export default function NumNinja() {
 
       setFeedback({ message: msg, type: 'success' });
 
-      if (currentLevel === LEVELS.length || isEndlessMode) {
-        saveScore(newTotal, newAttempts, currentLevel);
-      }
+      // Always persist cumulative score after each won level
+      saveScore(newCumulative, newAttempts, currentLevel);
     } else if (newAttempts >= activeLevelConfig.attempts) {
       playSfx('fail');
       setIsGameOver(true);
@@ -432,7 +492,7 @@ export default function NumNinja() {
     const quote = finalScore !== undefined
       ? encodeURIComponent(
           `🥷 I just cracked NumNinja!\n` +
-          `🎯 Guessed it in ${finalAttempts} attempt${finalAttempts === 1 ? '' : 's'} — Score: ${finalScore}/1000\n\n` +
+          `🎯 Guessed it in ${finalAttempts} attempt${finalAttempts === 1 ? '' : 's'} — Score: ${finalScore.toLocaleString()}\n\n` +
           `Think you can beat me? It's harder than it looks. 👇`
         )
       : encodeURIComponent(`🥷 Can YOU beat the NumNinja?\nGuess the secret number 1–100 before your 10 attempts run out. Simple? Think again. 👇`);
@@ -442,7 +502,7 @@ export default function NumNinja() {
   const copyShareText = () => {
     const text =
       `🥷 I just cracked NumNinja!\n` +
-      `🎯 Guessed it in ${attempts} attempt${attempts === 1 ? '' : 's'} — Score: ${totalScore}/1000\n\n` +
+      `🎯 Guessed it in ${attempts} attempt${attempts === 1 ? '' : 's'} — Score: ${cumulativeScore.toLocaleString()}\n\n` +
       `Think you can beat me? It's harder than it looks.\n` +
       `👉 ${window.location.href}`;
     navigator.clipboard.writeText(text);
@@ -657,7 +717,7 @@ export default function NumNinja() {
                 <p className="text-slate-400 mb-4">Gauntlet complete! Score keeps accumulating — pick your next challenge.</p>
                 <div className="inline-flex items-center gap-2 px-6 py-2 bg-cyan-900/30 border border-cyan-500/40 rounded-full">
                   <Trophy className="w-4 h-4 text-yellow-400" />
-                  <span className="font-black text-cyan-300 text-lg">{totalScore.toLocaleString()} pts</span>
+                  <span className="font-black text-cyan-300 text-lg">{cumulativeScore.toLocaleString()} pts</span>
                 </div>
               </div>
 
@@ -751,19 +811,31 @@ export default function NumNinja() {
               <div className="grid grid-cols-2 gap-4">
                 <motion.div
                   whileHover={{ y: -4 }}
-                  className="bg-slate-900/[0.85] backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
+                  className={`relative bg-slate-900/[0.85] backdrop-blur-md p-5 rounded-3xl border shadow-xl flex flex-col items-center transition-all duration-300 ${
+                    scoreGainVisible
+                      ? 'border-cyan-400/70 shadow-[0_0_25px_rgba(6,182,212,0.4)]'
+                      : 'border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                  }`}
                 >
-                  <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Score</span>
+                  <AnimatePresence>
+                    {scoreGainVisible && (
+                      <motion.div
+                        key="gain-badge"
+                        initial={{ opacity: 0, y: 4, scale: 0.7 }}
+                        animate={{ opacity: [0, 1, 1, 0], y: [4, -4, -14, -26], scale: [0.7, 1.15, 1, 0.85] }}
+                        transition={{ duration: 1.5, times: [0, 0.12, 0.65, 1] }}
+                        className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg shadow-cyan-500/50 whitespace-nowrap z-20 pointer-events-none"
+                      >
+                        +{scoreGainAmount.toLocaleString()} pts
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Total Score</span>
                   <span className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
-                    <motion.span
-                      key={totalScore}
-                      initial={{ scale: 1.3, color: '#67e8f9' }}
-                      animate={{ scale: 1, color: '#ffffff' }}
-                      className="text-3xl font-black"
-                    >
-                      {totalScore}
-                    </motion.span>
+                    <span className="text-3xl font-black text-white tabular-nums">
+                      {displayedCumulativeScore.toLocaleString()}
+                    </span>
                   </span>
                 </motion.div>
                 <motion.div
@@ -923,7 +995,7 @@ export default function NumNinja() {
                             <RotateCcw className="w-4 h-4" /> Restart Run
                           </button>
                         )}
-                        {(totalScore > 0 || isGameOver) && (
+                        {(cumulativeScore > 0 || isGameOver) && (
                           <button
                             type="button"
                             onClick={saveAndQuit}
@@ -960,7 +1032,7 @@ export default function NumNinja() {
                       className="flex flex-col sm:flex-row gap-3 justify-center mt-4 pt-4 border-t border-green-500/30"
                     >
                       <button
-                        onClick={() => shareToFacebook(totalScore, attempts)}
+                        onClick={() => shareToFacebook(cumulativeScore, attempts)}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20"
                       >
                         <Share2 className="w-4 h-4" /> Share to FB

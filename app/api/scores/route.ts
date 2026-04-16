@@ -53,16 +53,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Upsert: insert or update only if the new score is higher than the existing one
-    // alias unique constraint handles the conflict.
+    // Upsert: insert or unconditionally update (cumulative score always increases)
     const result = await db.prepare(
       `INSERT INTO scores (alias, score, attempts, level_reached, timestamp)
        VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(alias) DO UPDATE SET
-         score          = CASE WHEN excluded.score > scores.score THEN excluded.score ELSE scores.score END,
-         attempts       = CASE WHEN excluded.score > scores.score THEN excluded.attempts ELSE scores.attempts END,
-         level_reached  = CASE WHEN excluded.score > scores.score THEN excluded.level_reached ELSE scores.level_reached END,
-         timestamp      = CASE WHEN excluded.score > scores.score THEN excluded.timestamp ELSE scores.timestamp END`
+         score         = excluded.score,
+         attempts      = excluded.attempts,
+         level_reached = excluded.level_reached,
+         timestamp     = excluded.timestamp`
     ).bind(session.alias.trim(), score, attempts, level_reached, timestamp).run();
 
     return NextResponse.json({ success: true, id: result.meta.last_row_id });
