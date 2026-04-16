@@ -14,6 +14,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  manifest: '/manifest.json',
   title: 'NumNinja | The Number Guessing Challenge',
   description: 'Guess the secret number 1–100 in 10 attempts or less. Hot/cold clues, live leaderboard, and bragging rights. Can you crack it?',
   appleWebApp: {

@@ -513,17 +513,16 @@ export default function NumNinja() {
   const proxCfg = proximity ? PROXIMITY_CONFIG[proximity] : null;
 
   return (
-    <div 
-      className="min-h-[100dvh] text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden relative"
+    <div
+      className="fixed inset-0 overflow-y-auto text-slate-100 font-sans selection:bg-cyan-500/30"
       style={{
         backgroundImage: "url('/og-image.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed',
       }}
     >
-      <div className="fixed inset-0 bg-black/10 pointer-events-none z-0" />
+      <div className="absolute inset-0 bg-black/15 pointer-events-none z-0" />
 
       <FloatingNumbers />
 
@@ -536,9 +535,9 @@ export default function NumNinja() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="min-h-[100dvh] flex items-center justify-center p-6 pb-safe relative z-10"
+            className="min-h-full flex flex-col sm:items-center sm:justify-center sm:p-6 sm:pb-safe relative z-10"
           >
-            <div className="bg-slate-900/[0.85] backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+            <div className="bg-slate-900/[0.85] backdrop-blur-xl pt-safe pb-safe px-6 py-8 sm:p-8 sm:rounded-3xl shadow-2xl sm:max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex-1 sm:flex-none flex flex-col justify-center overflow-y-auto">
               <motion.div
                 initial={{ rotate: -10, scale: 0.8 }}
                 animate={{ rotate: 0, scale: 1 }}
@@ -639,7 +638,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-[100dvh] p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-2xl w-full">
               <div className="flex justify-between items-center mb-10">
@@ -705,7 +704,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-[100dvh] p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-2xl w-full">
               {/* Header */}
@@ -768,9 +767,9 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-[100dvh] p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="min-h-full px-4 py-4 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
-            <div className="max-w-md w-full flex flex-col gap-6">
+            <div className="max-w-md w-full bg-slate-900/[0.85] backdrop-blur-xl rounded-3xl border border-cyan-500/30 shadow-2xl shadow-[0_0_20px_rgba(6,182,212,0.1)] p-5 flex flex-col gap-4">
 
               {/* Header */}
               <div className="flex justify-between items-center">
@@ -811,10 +810,10 @@ export default function NumNinja() {
               <div className="grid grid-cols-2 gap-4">
                 <motion.div
                   whileHover={{ y: -4 }}
-                  className={`relative bg-slate-900/[0.85] backdrop-blur-md p-5 rounded-3xl border shadow-xl flex flex-col items-center transition-all duration-300 ${
+                  className={`relative p-4 rounded-2xl border flex flex-col items-center transition-all duration-300 ${
                     scoreGainVisible
-                      ? 'border-cyan-400/70 shadow-[0_0_25px_rgba(6,182,212,0.4)]'
-                      : 'border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                      ? 'border-cyan-400/70 shadow-[0_0_20px_rgba(6,182,212,0.35)]'
+                      : 'border-slate-700/60'
                   }`}
                 >
                   <AnimatePresence>
@@ -840,7 +839,7 @@ export default function NumNinja() {
                 </motion.div>
                 <motion.div
                   whileHover={{ y: -4 }}
-                  className="bg-slate-900/[0.85] backdrop-blur-md p-5 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center shadow-xl"
+                  className="p-4 rounded-2xl border border-slate-700/60 flex flex-col items-center"
                 >
                   <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-3">Attempts</span>
                   <div className="flex gap-1.5 flex-wrap justify-center">
@@ -861,8 +860,8 @@ export default function NumNinja() {
               {/* Guess Card */}
               <motion.div
                 animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
-                className={`bg-slate-900/[0.85] backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border-2 text-center relative overflow-hidden transition-all duration-300 ${
-                  proxCfg ? `${proxCfg.border} shadow-xl ${proxCfg.glow}` : 'border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                className={`p-6 rounded-2xl border-2 text-center relative overflow-hidden transition-all duration-300 ${
+                  proxCfg ? `${proxCfg.border} shadow-lg ${proxCfg.glow}` : 'border-slate-700/60'
                 }`}
               >
                 <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
@@ -1017,10 +1016,10 @@ export default function NumNinja() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className={`p-5 rounded-2xl border text-center font-bold transition-all shadow-inner ${
-                    feedback.type === 'success' ? 'bg-green-900/[0.85] border-green-500/50 text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.4)]' :
-                    feedback.type === 'warning' ? 'bg-amber-900/[0.85] border-amber-500/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)]' :
-                    'bg-cyan-900/[0.85] border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] text-cyan-300'
+                  className={`p-4 rounded-2xl border text-center font-bold transition-all ${
+                    feedback.type === 'success' ? 'bg-green-900/40 border-green-500/50 text-green-300 shadow-[0_0_12px_rgba(34,197,94,0.3)]' :
+                    feedback.type === 'warning' ? 'bg-amber-900/40 border-amber-500/50 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]' :
+                    'bg-cyan-900/40 border-cyan-400/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
                   }`}
                 >
                   <p className="leading-relaxed text-lg tracking-wide">{feedback.message}</p>
@@ -1050,8 +1049,8 @@ export default function NumNinja() {
               </AnimatePresence>
 
               {/* Previous Guesses */}
-              <div className="bg-slate-900/[0.85] backdrop-blur-md p-6 rounded-3xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-                <div className="text-xs font-black text-slate-500 mb-4 uppercase tracking-widest">History</div>
+              <div className="border-t border-slate-700/40 pt-4">
+                <div className="text-xs font-black text-slate-500 mb-3 uppercase tracking-widest">History</div>
                 <div className="flex flex-wrap gap-2">
                   {previousGuesses.length === 0 && (
                     <span className="text-slate-600 text-sm italic">No guesses yet...</span>
