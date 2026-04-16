@@ -32,7 +32,7 @@ input[type=number]::-webkit-inner-spin-button {
   margin: 0;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar for inner panels only */
 ::-webkit-scrollbar {
   width: 5px;
 }
@@ -45,4 +45,14 @@ input[type=number]::-webkit-inner-spin-button {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.6);
+}
+
+/* Root game container — no scrollbar so it doesn't steal right-side space */
+.game-root {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.game-root::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }

@@ -150,6 +150,20 @@ export default function NumNinja() {
     };
   }, []);
 
+  // Request fullscreen on first touch to hide the mobile browser bar
+  useEffect(() => {
+    const enterFullscreen = () => {
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      } else if ((el as any).webkitRequestFullscreen) {
+        (el as any).webkitRequestFullscreen();
+      }
+    };
+    document.addEventListener('touchstart', enterFullscreen, { once: true, passive: true });
+    return () => document.removeEventListener('touchstart', enterFullscreen);
+  }, []);
+
   const cumulativeScore = playerBaseScore + totalScore;
 
   const animateScoreCounter = useCallback((from: number, to: number) => {
@@ -514,7 +528,7 @@ export default function NumNinja() {
 
   return (
     <div
-      className="fixed inset-0 overflow-y-auto text-slate-100 font-sans selection:bg-cyan-500/30"
+      className="game-root fixed inset-0 overflow-y-auto text-slate-100 font-sans selection:bg-cyan-500/30"
       style={{
         backgroundImage: "url('/og-image.png')",
         backgroundSize: 'cover',
@@ -535,7 +549,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="min-h-full flex flex-col sm:items-center sm:justify-center sm:p-6 sm:pb-safe relative z-10"
+            className="w-full min-h-full flex flex-col sm:items-center sm:justify-center sm:p-6 sm:pb-safe relative z-10"
           >
             <div className="bg-slate-900/[0.85] backdrop-blur-xl pt-safe pb-safe px-6 py-8 sm:p-8 sm:rounded-3xl shadow-2xl sm:max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)] flex-1 sm:flex-none flex flex-col justify-center overflow-y-auto">
               <motion.div
@@ -638,7 +652,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="w-full min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-2xl w-full">
               <div className="flex justify-between items-center mb-10">
@@ -704,7 +718,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="w-full min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-2xl w-full">
               {/* Header */}
@@ -767,7 +781,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-full px-4 py-4 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="w-full min-h-full px-4 py-4 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-md w-full bg-slate-900/[0.85] backdrop-blur-xl rounded-3xl border border-cyan-500/30 shadow-2xl shadow-[0_0_20px_rgba(6,182,212,0.1)] p-5 flex flex-col gap-4">
 
