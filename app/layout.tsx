@@ -1,12 +1,29 @@
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Outfit } from 'next/font/google'
 
 const outfit = Outfit({ subsets: ['latin'] })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#000000',
+}
+
 export const metadata: Metadata = {
   title: 'NumNinja | The Number Guessing Challenge',
   description: 'Guess the secret number 1–100 in 10 attempts or less. Hot/cold clues, live leaderboard, and bragging rights. Can you crack it?',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'NumNinja',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   openGraph: {
     title: '🥷 NumNinja — Can You Crack the Code?',
     description: 'Guess a secret number from 1–100 before your 10 attempts run out. Hot & cold clues guide you closer. Think you\'ve got what it takes to top the leaderboard?',

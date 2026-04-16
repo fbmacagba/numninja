@@ -514,7 +514,7 @@ export default function NumNinja() {
 
   return (
     <div 
-      className="min-h-screen text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden relative"
+      className="min-h-[100dvh] text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden relative"
       style={{
         backgroundImage: "url('/og-image.png')",
         backgroundSize: 'cover',
@@ -536,7 +536,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="min-h-screen flex items-center justify-center p-6 relative z-10"
+            className="min-h-[100dvh] flex items-center justify-center p-6 pb-safe relative z-10"
           >
             <div className="bg-slate-900/[0.85] backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
               <motion.div
@@ -639,7 +639,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-screen p-6 md:p-12 flex flex-col items-center relative z-10"
+            className="min-h-[100dvh] p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-2xl w-full">
               <div className="flex justify-between items-center mb-10">
@@ -705,7 +705,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-screen p-6 md:p-12 flex flex-col items-center relative z-10"
+            className="min-h-[100dvh] p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-2xl w-full">
               {/* Header */}
@@ -768,7 +768,7 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-screen p-6 md:p-12 flex flex-col items-center relative z-10"
+            className="min-h-[100dvh] p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
           >
             <div className="max-w-md w-full flex flex-col gap-6">
 
@@ -1315,25 +1315,10 @@ export default function NumNinja() {
                         className="mb-5 p-4 rounded-2xl border text-left"
                         style={{ background: 'rgba(127,29,29,0.25)', borderColor: 'rgba(239,68,68,0.3)' }}
                       >
-                        <div className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-2.5">Smoke Bomb</div>
-                        <div className="flex items-start gap-3">
-                          <span className="text-2xl leading-none">💨</span>
-                          <div>
-                            <p className="text-sm font-black text-white">How to activate</p>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                              During a level, tap <span className="text-slate-200 font-semibold">💨 Smoke Bomb</span> below the input field whenever you feel stuck.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex items-start gap-3">
-                          <span className="text-2xl leading-none">🎯</span>
-                          <div>
-                            <p className="text-sm font-black text-white">What it does</p>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                              The smoke clears just enough to reveal a <span className="text-orange-300 font-semibold">narrowed range</span> — the secret number is guaranteed to be within <span className="text-orange-300 font-semibold">±15%</span> of the level&apos;s total range, centered around the answer. Fewer possibilities, better odds!
-                            </p>
-                          </div>
-                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-2">💨 Smoke Bomb Unlocked</div>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          Tap <span className="text-white font-semibold">💨 Smoke Bomb</span> during a level to reveal a <span className="text-orange-300 font-semibold">±15% range</span> guaranteed to contain the answer.
+                        </p>
                         <div className="mt-3 pt-3 border-t border-red-500/20 flex items-center gap-2">
                           <span className="text-xs text-slate-500">You now have</span>
                           <span className="font-black text-white text-base">{smokeBombs}</span>
