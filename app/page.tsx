@@ -652,10 +652,10 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="w-full min-h-full flex flex-col sm:items-center sm:p-6 md:p-12 relative z-10"
           >
-            <div className="max-w-2xl w-full">
-              <div className="flex justify-between items-center mb-10">
+            <div className="w-full sm:max-w-2xl bg-slate-900/[0.85] sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none pt-safe pb-safe px-4 sm:px-0 sm:pt-0 sm:pb-0 flex-1 sm:flex-none">
+              <div className="flex justify-between items-center mb-10 pt-4 sm:pt-0">
                 <div className="flex items-center gap-3">
                   <Trophy className="text-yellow-500 w-8 h-8" />
                   <h1 className="text-3xl font-black tracking-tight">Leaderboard</h1>
@@ -718,11 +718,11 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full min-h-full px-4 py-6 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="w-full min-h-full flex flex-col sm:items-center sm:p-6 md:p-12 relative z-10"
           >
-            <div className="max-w-2xl w-full">
+            <div className="w-full sm:max-w-2xl bg-slate-900/[0.85] sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none pt-safe pb-safe px-4 sm:px-0 sm:pt-0 sm:pb-0 flex-1 sm:flex-none">
               {/* Header */}
-              <div className="text-center mb-8">
+              <div className="text-center mb-8 pt-4 sm:pt-0">
                 <div className="text-6xl mb-3">🔥</div>
                 <h1 className="text-4xl font-black bg-gradient-to-r from-violet-400 via-fuchsia-400 to-orange-400 bg-clip-text text-transparent mb-2 tracking-tight">
                   ENDLESS MODE
@@ -781,9 +781,9 @@ export default function NumNinja() {
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full min-h-full px-4 py-4 sm:p-6 md:p-12 pb-safe flex flex-col items-center relative z-10"
+            className="w-full min-h-full flex flex-col sm:items-center sm:justify-center sm:p-6 md:p-12 relative z-10"
           >
-            <div className="max-w-md w-full bg-slate-900/[0.85] backdrop-blur-xl rounded-3xl border border-cyan-500/30 shadow-2xl shadow-[0_0_20px_rgba(6,182,212,0.1)] p-5 flex flex-col gap-4">
+            <div className="w-full sm:max-w-md bg-slate-900/[0.85] backdrop-blur-xl sm:rounded-3xl border-0 sm:border border-cyan-500/30 p-4 sm:p-5 pt-safe pb-safe flex flex-col gap-4 flex-1 sm:flex-none">
 
               {/* Header */}
               <div className="flex justify-between items-center">
