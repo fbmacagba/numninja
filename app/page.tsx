@@ -814,7 +814,7 @@ export default function NumNinja() {
                   >
                     <Share2 className="w-4 h-4" />
                   </motion.button>
-                  <div className="text-xl font-black bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_5px_rgba(251,146,60,0.4)] italic tracking-tighter">
+                  <div className="hidden sm:block text-xl font-black bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_5px_rgba(251,146,60,0.4)] italic tracking-tighter">
                     NUMNINJA
                   </div>
                 </div>
