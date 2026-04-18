@@ -110,6 +110,14 @@ export default function NumNinja() {
   const scoreGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [isGuest, setIsGuest] = useState(false);
+  const [showGuestGateModal, setShowGuestGateModal] = useState(false);
+  const [guestGateStep, setGuestGateStep] = useState<'prompt' | 'declined' | 'register' | 'goodbye'>('prompt');
+  const [guestRegAlias, setGuestRegAlias] = useState('');
+  const [guestRegPassword, setGuestRegPassword] = useState('');
+  const [guestRegError, setGuestRegError] = useState<string | null>(null);
+  const [guestRegLoading, setGuestRegLoading] = useState(false);
+
   useEffect(() => {
     async function loadScores() {
       try {
@@ -231,16 +239,16 @@ export default function NumNinja() {
   // Bombs awarded on all levels during the gauntlet; in Endless Mode only on levels 6-8
   const isBombEligible = isEndlessMode ? currentLevel >= 6 : true;
 
-  const startNewRun = (baseScore?: number) => {
+  const startNewRun = (baseScore?: number, resumeLevel: number = 1) => {
     setIsEndlessMode(false);
-    setCurrentLevel(1);
+    setCurrentLevel(resumeLevel);
     setTotalScore(0);
     setSmokeBombs(0);
     if (baseScore !== undefined) {
       setPlayerBaseScore(baseScore);
       setDisplayedCumulativeScore(baseScore);
     }
-    startLevel(1);
+    startLevel(resumeLevel);
   };
 
   const handleLogin = async () => {
@@ -274,7 +282,8 @@ export default function NumNinja() {
       const canonAlias = (data.alias || normalized).toLowerCase();
       const existingEntry = highScores.find(s => s.alias.toLowerCase() === canonAlias);
       const base = existingEntry?.score ?? 0;
-      startNewRun(base);
+      const resumeLevel = Math.min(Math.max(existingEntry?.levelReached ?? 1, 1), LEVELS.length);
+      startNewRun(base, resumeLevel);
     } catch (err) {
       setAliasError('Network error, please try again.');
     }
@@ -289,7 +298,8 @@ export default function NumNinja() {
     setGameState('login');
     setPlayerAlias('');
     setPassword('');
-    setHighScores([]); 
+    setIsGuest(false);
+    setHighScores([]);
     // Reload to clear state safely
     window.location.reload();
   };
@@ -323,16 +333,18 @@ export default function NumNinja() {
     setGameState('game');
   };
 
-  const saveScore = async (finalScore: number, finalAttempts: number, levelReached: number) => {
+  const saveScore = async (finalScore: number, finalAttempts: number, levelReached: number, aliasOverride?: string) => {
+    if (isGuest && !aliasOverride) return;
+    const effectiveAlias = aliasOverride ?? playerAlias;
     const newScore: ScoreEntry = {
-      alias: playerAlias,
+      alias: effectiveAlias,
       score: finalScore,
       levelReached,
       attempts: finalAttempts,
       timestamp: new Date().toISOString(),
     };
     // Always replace — cumulative score always increases
-    const updatedScores = [...highScores.filter(s => s.alias !== playerAlias), newScore]
+    const updatedScores = [...highScores.filter(s => s.alias !== effectiveAlias), newScore]
       .sort((a, b) => b.score - a.score).slice(0, 50);
     setHighScores(updatedScores);
     localStorage.setItem('numninja_scores', JSON.stringify(updatedScores));
@@ -501,6 +513,58 @@ export default function NumNinja() {
     setChestState('closed');
   };
 
+  const handleGuestPlay = () => {
+    setIsGuest(true);
+    setPlayerAlias('Guest');
+    setAliasError(null);
+    startNewRun(0, 1);
+  };
+
+  const handleNextLevelOrGate = () => {
+    if (isGuest && currentLevel >= 5) {
+      setGuestGateStep('prompt');
+      setGuestRegAlias('');
+      setGuestRegPassword('');
+      setGuestRegError(null);
+      setShowGuestGateModal(true);
+    } else {
+      startNextLevel();
+    }
+  };
+
+  const handleGuestRegister = async () => {
+    const normalized = guestRegAlias.trim();
+    if (!normalized || !guestRegPassword || normalized.length < 3 || guestRegPassword.length < 4) {
+      setGuestRegError('Alias must be 3+ chars, password 4+ chars.');
+      return;
+    }
+    setGuestRegLoading(true);
+    setGuestRegError(null);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alias: normalized, password: guestRegPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGuestRegError(data.error || 'Registration failed');
+        setGuestRegLoading(false);
+        return;
+      }
+      const canonAlias = (data.alias || normalized) as string;
+      await saveScore(cumulativeScore, attempts, currentLevel, canonAlias);
+      setIsGuest(false);
+      setPlayerAlias(canonAlias);
+      setShowGuestGateModal(false);
+      startNextLevel();
+    } catch {
+      setGuestRegError('Network error, please try again.');
+    } finally {
+      setGuestRegLoading(false);
+    }
+  };
+
   const shareToFacebook = (finalScore?: number, finalAttempts?: number) => {
     const url = encodeURIComponent(window.location.href);
     const quote = finalScore !== undefined
@@ -615,6 +679,21 @@ export default function NumNinja() {
                 className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(6,182,212,0.4)]"
               >
                 <Zap className="w-5 h-5 fill-current" /> {authMode === 'login' ? 'Login & Play' : 'Register & Play'}
+              </motion.button>
+
+              <div className="flex items-center gap-3 mt-1">
+                <div className="flex-1 h-px bg-slate-700/60" />
+                <span className="text-slate-500 text-xs font-medium">or</span>
+                <div className="flex-1 h-px bg-slate-700/60" />
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleGuestPlay}
+                className="w-full py-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 hover:border-slate-500/50 text-slate-300 font-semibold rounded-2xl transition-all flex items-center justify-center gap-2 text-base"
+              >
+                Play as Guest <span className="text-slate-500 text-sm font-normal">(up to level 5)</span>
               </motion.button>
 
               {highScores.length > 0 && (
@@ -956,7 +1035,7 @@ export default function NumNinja() {
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         type="button"
-                        onClick={startNextLevel}
+                        onClick={handleNextLevelOrGate}
                         className="py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                       >
                          Next Level <ArrowUp className="w-5 h-5" />
@@ -1374,6 +1453,143 @@ export default function NumNinja() {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── GUEST GATE MODAL ─── */}
+      <AnimatePresence>
+        {showGuestGateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            style={{ background: 'rgba(2,6,23,0.92)', backdropFilter: 'blur(8px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, y: 60 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.7, opacity: 0, y: 30 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+              className="relative bg-gradient-to-b from-slate-900 to-slate-950 border border-cyan-500/30 rounded-3xl px-8 pt-7 pb-8 max-w-sm w-full text-center overflow-hidden shadow-2xl shadow-cyan-500/10"
+            >
+              {guestGateStep === 'prompt' && (
+                <motion.div key="prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="text-5xl mb-4">🏆</div>
+                  <h2 className="text-xl font-black text-white mb-2">Level 6 Unlocked!</h2>
+                  <p className="text-slate-400 text-sm mb-6">Save your score to continue to the next level and preserve your progress.</p>
+                  <div className="flex flex-col gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => setGuestGateStep('register')}
+                      className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-2xl transition-all"
+                    >
+                      Save Score & Continue
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => setGuestGateStep('declined')}
+                      className="w-full py-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-400 font-semibold rounded-2xl transition-all"
+                    >
+                      Not Now
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+
+              {guestGateStep === 'declined' && (
+                <motion.div key="declined" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="text-5xl mb-4">🔒</div>
+                  <h2 className="text-xl font-black text-white mb-2">Score Required</h2>
+                  <p className="text-slate-400 text-sm mb-6">Guests must save their scores before they can continue beyond level 5.</p>
+                  <div className="flex flex-col gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => setGuestGateStep('register')}
+                      className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-2xl transition-all"
+                    >
+                      Save Score
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => setGuestGateStep('goodbye')}
+                      className="w-full py-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-400 font-semibold rounded-2xl transition-all"
+                    >
+                      Exit Game
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+
+              {guestGateStep === 'register' && (
+                <motion.div key="register" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="text-5xl mb-4">🥷</div>
+                  <h2 className="text-xl font-black text-white mb-1">Create Your Account</h2>
+                  <p className="text-slate-400 text-sm mb-5">Choose an alias and password to save your score.</p>
+                  <div className="flex flex-col gap-3 text-left mb-4">
+                    <input
+                      type="text"
+                      value={guestRegAlias}
+                      onChange={e => setGuestRegAlias(e.target.value)}
+                      placeholder="Alias (3+ chars)"
+                      className="w-full px-4 py-3 bg-slate-800/80 border border-slate-600/50 focus:border-cyan-500/70 rounded-xl text-white placeholder-slate-500 outline-none transition-colors"
+                    />
+                    <input
+                      type="password"
+                      value={guestRegPassword}
+                      onChange={e => setGuestRegPassword(e.target.value)}
+                      placeholder="Password (4+ chars)"
+                      className="w-full px-4 py-3 bg-slate-800/80 border border-slate-600/50 focus:border-cyan-500/70 rounded-xl text-white placeholder-slate-500 outline-none transition-colors"
+                      onKeyDown={e => e.key === 'Enter' && handleGuestRegister()}
+                    />
+                    {guestRegError && (
+                      <p className="text-red-400 text-sm font-bold flex items-center gap-1">
+                        <Zap className="w-4 h-4" /> {guestRegError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={handleGuestRegister}
+                      disabled={guestRegLoading}
+                      className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white font-bold rounded-2xl transition-all"
+                    >
+                      {guestRegLoading ? 'Saving...' : 'Register & Continue'}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => setGuestGateStep('declined')}
+                      className="w-full py-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-400 font-semibold rounded-2xl transition-all"
+                    >
+                      Back
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+
+              {guestGateStep === 'goodbye' && (
+                <motion.div key="goodbye" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="text-5xl mb-4">🌟</div>
+                  <h2 className="text-xl font-black text-white mb-2">Thank You for Playing!</h2>
+                  <p className="text-slate-400 text-sm mb-6">Thank you for playing NumNinja! Hope you enjoyed the game.</p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setShowGuestGateModal(false);
+                      setIsGuest(false);
+                      setPlayerAlias('');
+                      setGameState('login');
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-2xl transition-all"
+                  >
+                    Return to Home
+                  </motion.button>
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
         )}
