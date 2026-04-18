@@ -111,6 +111,12 @@ export default function NumNinja() {
   const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isGuest, setIsGuest] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackCategory, setFeedbackCategory] = useState('other');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackDone, setFeedbackDone] = useState(false);
   const [showGuestGateModal, setShowGuestGateModal] = useState(false);
   const [guestGateStep, setGuestGateStep] = useState<'prompt' | 'declined' | 'register' | 'goodbye'>('prompt');
   const [guestRegAlias, setGuestRegAlias] = useState('');
@@ -513,6 +519,29 @@ export default function NumNinja() {
     setChestState('closed');
   };
 
+  const openFeedbackModal = () => {
+    setFeedbackMessage('');
+    setFeedbackRating(0);
+    setFeedbackCategory('other');
+    setFeedbackDone(false);
+    setShowFeedbackModal(true);
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackMessage.trim() || feedbackLoading) return;
+    setFeedbackLoading(true);
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: feedbackMessage.trim(), rating: feedbackRating || null, category: feedbackCategory }),
+      });
+      setFeedbackDone(true);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
   const handleGuestPlay = () => {
     setIsGuest(true);
     setPlayerAlias('Guest');
@@ -786,6 +815,13 @@ export default function NumNinja() {
                   )}
                 </div>
               </div>
+
+              <button
+                onClick={openFeedbackModal}
+                className="mt-5 w-full py-3 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-700/60 hover:border-cyan-500/30 rounded-2xl text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+              >
+                <span>💬</span> Leave Feedback
+              </button>
             </div>
           </motion.div>
         )}
@@ -1589,6 +1625,131 @@ export default function NumNinja() {
                     Return to Home
                   </motion.button>
                 </motion.div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── FEEDBACK MODAL ─── */}
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            style={{ background: 'rgba(2,6,23,0.92)', backdropFilter: 'blur(8px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowFeedbackModal(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+              className="bg-gradient-to-b from-slate-900 to-slate-950 border border-cyan-500/20 rounded-3xl px-7 pt-7 pb-8 max-w-md w-full shadow-2xl shadow-cyan-500/10"
+            >
+              {feedbackDone ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center py-4"
+                >
+                  <div className="text-5xl mb-4">🙏</div>
+                  <h2 className="text-2xl font-black text-white mb-2">Thanks!</h2>
+                  <p className="text-slate-400 text-sm mb-6">Your feedback helps make NumNinja better.</p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowFeedbackModal(false)}
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-2xl transition-all"
+                  >
+                    Close
+                  </motion.button>
+                </motion.div>
+              ) : (
+                <>
+                  <div className="mb-5">
+                    <h2 className="text-2xl font-black text-white">Send Feedback</h2>
+                    <p className="text-slate-400 text-sm mt-1">Bugs, ideas, or just a note — we read everything.</p>
+                  </div>
+
+                  {/* Category */}
+                  <div className="mb-4">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Type</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { value: 'bug', label: '🐛 Bug' },
+                        { value: 'suggestion', label: '💡 Idea' },
+                        { value: 'praise', label: '❤️ Love' },
+                        { value: 'other', label: '💬 Other' },
+                      ].map(({ value, label }) => (
+                        <button
+                          key={value}
+                          onClick={() => setFeedbackCategory(value)}
+                          className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                            feedbackCategory === value
+                              ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-300'
+                              : 'border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-400'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rating */}
+                  <div className="mb-4">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Rating (optional)</div>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setFeedbackRating(feedbackRating === star ? 0 : star)}
+                          className={`text-2xl transition-transform hover:scale-110 ${
+                            star <= feedbackRating ? 'text-yellow-400' : 'text-slate-700 hover:text-slate-500'
+                          }`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Message */}
+                  <div className="mb-5">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Message</div>
+                    <textarea
+                      value={feedbackMessage}
+                      onChange={(e) => setFeedbackMessage(e.target.value.slice(0, 1000))}
+                      placeholder="Tell us what you think..."
+                      rows={4}
+                      className="w-full bg-slate-800/80 border border-slate-700 focus:border-cyan-500/60 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none transition-colors"
+                    />
+                    <div className="text-right text-xs text-slate-700 mt-1">{feedbackMessage.length}/1000</div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowFeedbackModal(false)}
+                      className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 font-bold rounded-2xl transition-all text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <motion.button
+                      whileHover={{ scale: feedbackMessage.trim() ? 1.02 : 1 }}
+                      whileTap={{ scale: feedbackMessage.trim() ? 0.98 : 1 }}
+                      onClick={submitFeedback}
+                      disabled={!feedbackMessage.trim() || feedbackLoading}
+                      className="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-2xl transition-all text-sm flex items-center justify-center gap-2"
+                    >
+                      {feedbackLoading
+                        ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</>
+                        : 'Send Feedback'}
+                    </motion.button>
+                  </div>
+                </>
               )}
             </motion.div>
           </motion.div>
