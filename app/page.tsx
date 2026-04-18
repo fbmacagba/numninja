@@ -111,6 +111,13 @@ export default function NumNinja() {
   const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isGuest, setIsGuest] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileCurrentPw, setProfileCurrentPw] = useState('');
+  const [profileNewPw, setProfileNewPw] = useState('');
+  const [profileConfirmPw, setProfileConfirmPw] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileDone, setProfileDone] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackRating, setFeedbackRating] = useState(0);
@@ -519,6 +526,44 @@ export default function NumNinja() {
     setChestState('closed');
   };
 
+  const openProfileModal = () => {
+    setProfileCurrentPw('');
+    setProfileNewPw('');
+    setProfileConfirmPw('');
+    setProfileError(null);
+    setProfileDone(false);
+    setShowProfileModal(true);
+  };
+
+  const submitProfile = async () => {
+    if (profileLoading) return;
+    if (profileNewPw !== profileConfirmPw) {
+      setProfileError('New passwords do not match');
+      return;
+    }
+    if (profileNewPw.length < 4) {
+      setProfileError('New password must be at least 4 characters');
+      return;
+    }
+    setProfileError(null);
+    setProfileLoading(true);
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: profileCurrentPw, newPassword: profileNewPw }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setProfileError(data.error || 'Failed to update profile');
+        return;
+      }
+      setProfileDone(true);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   const openFeedbackModal = () => {
     setFeedbackMessage('');
     setFeedbackRating(0);
@@ -903,9 +948,13 @@ export default function NumNinja() {
               {/* Header */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/[0.85] backdrop-blur-md rounded-full border border-slate-700 text-slate-300 text-xs font-bold shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+                  <button
+                    onClick={openProfileModal}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/[0.85] backdrop-blur-md rounded-full border border-slate-700 hover:border-cyan-500/50 text-slate-300 text-xs font-bold shadow-[0_0_10px_rgba(0,0,0,0.5)] transition-all"
+                    title="Profile settings"
+                  >
                     <User className="w-3 h-3 text-slate-400" /> {playerAlias}
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/[0.85] backdrop-blur-md rounded-full border border-cyan-500/50 text-cyan-300 text-xs font-black shadow-[0_0_10px_rgba(6,182,212,0.4)]">
                     <Crown className="w-3 h-3 text-yellow-400" /> {activeLevelConfig.rank}
                   </div>
@@ -1625,6 +1674,132 @@ export default function NumNinja() {
                     Return to Home
                   </motion.button>
                 </motion.div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── PROFILE MODAL ─── */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            style={{ background: 'rgba(2,6,23,0.92)', backdropFilter: 'blur(8px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+              className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/60 rounded-3xl px-7 pt-7 pb-8 max-w-md w-full shadow-2xl"
+            >
+              {profileDone ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center py-4"
+                >
+                  <div className="text-5xl mb-4">✅</div>
+                  <h2 className="text-2xl font-black text-white mb-2">Password Updated</h2>
+                  <p className="text-slate-400 text-sm mb-6">Your new password is active.</p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowProfileModal(false)}
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-2xl transition-all"
+                  >
+                    Done
+                  </motion.button>
+                </motion.div>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="w-10 h-10 rounded-full bg-cyan-900/50 border border-cyan-500/40 flex items-center justify-center">
+                        <User className="w-5 h-5 text-cyan-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-black text-white leading-none">{playerAlias}</h2>
+                        <p className="text-xs text-slate-500 mt-0.5">Profile settings</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-5">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Current Password</label>
+                      <input
+                        type="password"
+                        value={profileCurrentPw}
+                        onChange={(e) => setProfileCurrentPw(e.target.value)}
+                        placeholder="Enter current password"
+                        autoComplete="current-password"
+                        className="w-full bg-slate-800/80 border border-slate-700 focus:border-cyan-500/60 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1.5">New Password</label>
+                      <input
+                        type="password"
+                        value={profileNewPw}
+                        onChange={(e) => { setProfileNewPw(e.target.value); setProfileError(null); }}
+                        placeholder="At least 4 characters"
+                        autoComplete="new-password"
+                        className="w-full bg-slate-800/80 border border-slate-700 focus:border-cyan-500/60 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={profileConfirmPw}
+                        onChange={(e) => { setProfileConfirmPw(e.target.value); setProfileError(null); }}
+                        placeholder="Repeat new password"
+                        autoComplete="new-password"
+                        onKeyDown={(e) => e.key === 'Enter' && profileCurrentPw && profileNewPw && profileConfirmPw && submitProfile()}
+                        className="w-full bg-slate-800/80 border border-slate-700 focus:border-cyan-500/60 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <AnimatePresence>
+                      {profileError && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="text-red-400 text-sm font-semibold"
+                        >
+                          {profileError}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowProfileModal(false)}
+                      className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 font-bold rounded-2xl transition-all text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <motion.button
+                      whileHover={{ scale: profileCurrentPw && profileNewPw && profileConfirmPw ? 1.02 : 1 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={submitProfile}
+                      disabled={!profileCurrentPw || !profileNewPw || !profileConfirmPw || profileLoading}
+                      className="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-2xl transition-all text-sm flex items-center justify-center gap-2"
+                    >
+                      {profileLoading
+                        ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving...</>
+                        : 'Save Changes'}
+                    </motion.button>
+                  </div>
+                </>
               )}
             </motion.div>
           </motion.div>
