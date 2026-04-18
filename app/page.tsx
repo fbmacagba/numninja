@@ -871,7 +871,7 @@ export default function NumNinja() {
                     <User className="w-3 h-3 text-slate-400" /> {playerAlias}
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/[0.85] backdrop-blur-md rounded-full border border-cyan-500/50 text-cyan-300 text-xs font-black shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-                    <Crown className="w-3 h-3 text-yellow-400" /> {activeLevelConfig.rank} (Lvl {currentLevel})
+                    <Crown className="w-3 h-3 text-yellow-400" /> {activeLevelConfig.rank}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
