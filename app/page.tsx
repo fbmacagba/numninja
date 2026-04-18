@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share2, Copy, Check, ArrowUp, ArrowDown, LogOut } from 'lucide-react';
+import { Trophy, RotateCcw, Target, ArrowLeft, User, Zap, Sparkles, Crown, Share2, Copy, Check, ArrowUp, ArrowDown, LogOut, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
@@ -111,6 +111,7 @@ export default function NumNinja() {
   const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isGuest, setIsGuest] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileCurrentPw, setProfileCurrentPw] = useState('');
   const [profileNewPw, setProfileNewPw] = useState('');
@@ -290,6 +291,7 @@ export default function NumNinja() {
       if (data.alias) {
         setPlayerAlias(data.alias);
       }
+      setIsAdmin(!!data.isAdmin);
 
       // Load existing score as base for cumulative scoring
       const canonAlias = (data.alias || normalized).toLowerCase();
@@ -312,6 +314,7 @@ export default function NumNinja() {
     setPlayerAlias('');
     setPassword('');
     setIsGuest(false);
+    setIsAdmin(false);
     setHighScores([]);
     // Reload to clear state safely
     window.location.reload();
@@ -813,12 +816,22 @@ export default function NumNinja() {
                   <Trophy className="text-yellow-500 w-8 h-8" />
                   <h1 className="text-3xl font-black tracking-tight">Leaderboard</h1>
                 </div>
-                <button
-                  onClick={() => setGameState('game')}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center gap-2 transition-all border border-slate-700"
-                >
-                  <ArrowLeft className="w-4 h-4" /> Back
-                </button>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <a
+                      href="/admin"
+                      className="px-4 py-2 bg-amber-900/50 hover:bg-amber-800/60 text-amber-400 hover:text-amber-300 rounded-xl flex items-center gap-2 transition-all border border-amber-500/50 hover:border-amber-400"
+                    >
+                      <Shield className="w-4 h-4" /> Admin
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setGameState('game')}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center gap-2 transition-all border border-slate-700"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back
+                  </button>
+                </div>
               </div>
 
               <div className="bg-slate-900/[0.85] backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
@@ -960,6 +973,17 @@ export default function NumNinja() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {isAdmin && (
+                    <motion.a
+                      href="/admin"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="p-2 bg-slate-900/[0.85] backdrop-blur-md hover:bg-amber-900/[0.85] text-amber-400 hover:text-amber-300 rounded-full border border-amber-500/50 hover:border-amber-400 transition-all shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                      title="Admin Dashboard"
+                    >
+                      <Shield className="w-4 h-4" />
+                    </motion.a>
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}

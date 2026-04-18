@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     // Issue JWT
     const token = await signSessionToken({ id: user.id as number, alias: canonicalAlias });
-    
+
     cookies().set('numninja_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -50,7 +50,10 @@ export async function POST(request: Request) {
       path: '/',
     });
 
-    return NextResponse.json({ success: true, alias: canonicalAlias });
+    const adminList = (process.env.ADMIN_ALIASES || '').split(',').map((a) => a.trim().toLowerCase()).filter(Boolean);
+    const isAdmin = adminList.includes(canonicalAlias.toLowerCase());
+
+    return NextResponse.json({ success: true, alias: canonicalAlias, isAdmin });
   } catch (error) {
     console.error('Login Error:', error);
     return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 });
