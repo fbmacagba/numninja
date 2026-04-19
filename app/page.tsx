@@ -687,7 +687,7 @@ export default function NumNinja() {
     <div
       className="game-root fixed inset-0 overflow-y-auto text-slate-100 font-sans selection:bg-cyan-500/30"
       style={{
-        backgroundImage: "url('/og-image.png')",
+        backgroundImage: "url('/numninja-bg-new.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
@@ -1018,9 +1018,6 @@ export default function NumNinja() {
                   >
                     <Share2 className="w-4 h-4" />
                   </motion.button>
-                  <div className="hidden sm:block text-xl font-black bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_5px_rgba(251,146,60,0.4)] italic tracking-tighter">
-                    NUMNINJA
-                  </div>
                 </div>
               </div>
 
