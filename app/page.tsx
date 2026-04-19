@@ -133,18 +133,19 @@ export default function NumNinja() {
   const [guestRegLoading, setGuestRegLoading] = useState(false);
 
   useEffect(() => {
-    async function loadScores() {
+    async function init() {
+      // Load scores
+      let scores: any[] = [];
       try {
         const response = await fetch('/api/scores');
         if (response.ok) {
           const apiScores = await response.json();
-          // Map DB snake_case to frontend camelCase if needed
-          const mappedScores = apiScores.map((s: any) => ({
+          scores = apiScores.map((s: any) => ({
             ...s,
             levelReached: s.level_reached || s.levelReached || 1
           }));
-          setHighScores(mappedScores);
-          localStorage.setItem('numninja_scores', JSON.stringify(mappedScores));
+          setHighScores(scores);
+          localStorage.setItem('numninja_scores', JSON.stringify(scores));
         } else {
           throw new Error('API returned non-ok status');
         }
@@ -153,15 +154,30 @@ export default function NumNinja() {
         const savedScores = localStorage.getItem('numninja_scores');
         if (savedScores) {
           try {
-            setHighScores(JSON.parse(savedScores));
+            scores = JSON.parse(savedScores);
+            setHighScores(scores);
           } catch (e) {
             console.error('Failed to parse scores');
           }
         }
       }
       setIsLoadingScores(false);
+
+      // Restore session if cookie is still valid
+      try {
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const me = await meRes.json();
+          setPlayerAlias(me.alias);
+          setIsAdmin(!!me.isAdmin);
+          const existing = scores.find((s: any) => s.alias.toLowerCase() === me.alias.toLowerCase());
+          const base = existing?.score ?? 0;
+          const resumeLevel = Math.min(Math.max(existing?.levelReached ?? 1, 1), LEVELS.length);
+          startNewRun(base, resumeLevel);
+        }
+      } catch {}
     }
-    loadScores();
+    init();
   }, []);
 
   useEffect(() => {
