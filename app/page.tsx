@@ -488,9 +488,11 @@ export default function NumNinja() {
       playSfx('smoke');
       setSmokeBombs(prev => prev - 1);
       const variance = Math.max(2, Math.floor(activeLevelConfig.range * 0.15));
-      const low = Math.max(isShrinkingLevel ? windowLow : 1, secretNumber - variance);
-      const high = Math.min(isShrinkingLevel ? windowHigh : activeLevelConfig.range, secretNumber + variance);
-      if (isShrinkingLevel) {
+      const attemptsLeft = activeLevelConfig.attempts - attempts;
+      const canShrink = isShrinkingLevel && attemptsLeft <= 3;
+      const low = Math.max(canShrink ? windowLow : 1, secretNumber - variance);
+      const high = Math.min(canShrink ? windowHigh : activeLevelConfig.range, secretNumber + variance);
+      if (canShrink) {
         setWindowLow(low);
         setWindowHigh(high);
       }
