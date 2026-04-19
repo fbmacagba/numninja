@@ -472,31 +472,11 @@ export default function NumNinja() {
 
       const attemptsLeft = activeLevelConfig.attempts - newAttempts;
 
-      // Shrinking window: compress the allowed range every 3rd wrong guess on levels 6+
-      let shrinkMsg = '';
-      if (isShrinkingLevel && newAttempts % 3 === 0) {
-        const updatedGuesses = [...previousGuesses, { value: numGuess, result }];
-        let logicLow = 1, logicHigh = activeLevelConfig.range;
-        updatedGuesses.forEach(g => {
-          if (g.result === 'low')  logicLow  = Math.max(logicLow,  g.value + 1);
-          if (g.result === 'high') logicHigh = Math.min(logicHigh, g.value - 1);
-        });
-        const logicWidth = logicHigh - logicLow + 1;
-        const newWindowWidth = Math.max(1, Math.ceil(logicWidth * 0.5));
-        const minStart = Math.max(logicLow, secretNumber - newWindowWidth + 1);
-        const maxStart = Math.min(logicHigh - newWindowWidth + 1, secretNumber);
-        const windowStart = minStart + Math.floor(Math.random() * (Math.max(0, maxStart - minStart) + 1));
-        const windowEnd = windowStart + newWindowWidth - 1;
-        setWindowLow(windowStart);
-        setWindowHigh(windowEnd);
-        shrinkMsg = ` 🪟 WINDOW SHRINKS: ${windowStart}–${windowEnd}!`;
-      }
-
       if (attemptsLeft === 1) {
-        setFeedback({ message: `Focus... your life depends on it. 🧘‍♂️ (1 try left!)${shrinkMsg}`, type: 'warning' });
+        setFeedback({ message: `Focus... your life depends on it. 🧘‍♂️ (1 try left!)`, type: 'warning' });
       } else {
         const dir = numGuess < secretNumber ? '⬆️ TOO LOW! Go higher!' : '⬇️ TOO HIGH! Go lower!';
-        setFeedback({ message: `${dir}${shrinkMsg}`, type: 'warning' });
+        setFeedback({ message: dir, type: 'warning' });
       }
     }
 
@@ -505,12 +485,16 @@ export default function NumNinja() {
 
   const useSmokeBomb = () => {
     if (smokeBombs > 0 && !isGameOver) {
-       playSfx('smoke');
-       setSmokeBombs(prev => prev - 1);
-       const variance = Math.max(2, Math.floor(activeLevelConfig.range * 0.15));
-       const low = Math.max(isShrinkingLevel ? windowLow : 1, secretNumber - variance);
-       const high = Math.min(isShrinkingLevel ? windowHigh : activeLevelConfig.range, secretNumber + variance);
-       setFeedback({ message: `💨 SMOKE BOMB: It's between ${low} and ${high}!`, type: 'info' });
+      playSfx('smoke');
+      setSmokeBombs(prev => prev - 1);
+      const variance = Math.max(2, Math.floor(activeLevelConfig.range * 0.15));
+      const low = Math.max(isShrinkingLevel ? windowLow : 1, secretNumber - variance);
+      const high = Math.min(isShrinkingLevel ? windowHigh : activeLevelConfig.range, secretNumber + variance);
+      if (isShrinkingLevel) {
+        setWindowLow(low);
+        setWindowHigh(high);
+      }
+      setFeedback({ message: `💨 SMOKE BOMB: It's between ${low} and ${high}!`, type: 'info' });
     }
   };
 
@@ -1113,7 +1097,7 @@ export default function NumNinja() {
                         : 'bg-amber-900/30 border-amber-500/40 text-amber-300'
                     }`}>
                       🪟 Window: {windowLow}–{windowHigh}
-                      {attempts > 0 && attempts % 3 === 2 && ' ⚠️ Shrinks next!'}
+                      {smokeBombs > 0 && activeLevelConfig.attempts - attempts <= 3 && ' ⚠️ Use a bomb to shrink!'}
                     </span>
                   </motion.div>
                 )}
