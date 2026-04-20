@@ -39,6 +39,12 @@ export async function POST(request: Request) {
     // Canonical alias from DB (preserve original casing, but ensure no trailing spaces)
     const canonicalAlias = (user.alias as string).trim();
 
+    // Update country on each login so it stays current
+    const country = (request as any).cf?.country || request.headers.get('CF-IPCountry') || null;
+    if (country) {
+      await db.prepare('UPDATE users SET country = ? WHERE id = ?').bind(country, user.id).run();
+    }
+
     // Issue JWT
     const token = await signSessionToken({ id: user.id as number, alias: canonicalAlias });
 

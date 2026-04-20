@@ -32,9 +32,10 @@ export async function POST(request: Request) {
 
     // Hash and insert
     const passwordHash = await hashPassword(password);
+    const country = (request as any).cf?.country || request.headers.get('CF-IPCountry') || null;
     const result = await db.prepare(
-      'INSERT INTO users (alias, password_hash) VALUES (?, ?)'
-    ).bind(normalizedAlias, passwordHash).run();
+      'INSERT INTO users (alias, password_hash, country) VALUES (?, ?, ?)'
+    ).bind(normalizedAlias, passwordHash, country).run();
 
     const newId = result.meta.last_row_id;
 

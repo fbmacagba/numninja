@@ -4,6 +4,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, MessageSquare, Users, Star, Trash2, RefreshCw, Filter, BarChart3, ArrowLeft } from 'lucide-react';
 
+type PlayerRow = {
+  alias: string;
+  country: string | null;
+  score: number;
+  attempts: number;
+  level_reached: number;
+};
+
 type FeedbackItem = {
   id: number;
   alias: string | null;
@@ -47,12 +55,24 @@ function StarRating({ rating }: { rating: number | null }) {
   );
 }
 
-function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string | number; sub?: string }) {
+function countryFlag(code: string | null): string {
+  if (!code || code.length !== 2 || code === 'T1' || code === 'XX') return '🌍';
+  const upper = code.toUpperCase();
+  return String.fromCodePoint(0x1F1E6 + upper.charCodeAt(0) - 65, 0x1F1E6 + upper.charCodeAt(1) - 65);
+}
+
+function StatCard({ icon, label, value, sub, onClick, active }: {
+  icon: React.ReactNode; label: string; value: string | number; sub?: string;
+  onClick?: () => void; active?: boolean;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-5 flex items-start gap-4"
+      onClick={onClick}
+      className={`bg-slate-900/80 border rounded-2xl p-5 flex items-start gap-4 transition-colors ${
+        onClick ? 'cursor-pointer hover:bg-slate-800/80' : ''
+      } ${active ? 'border-cyan-500/60 bg-slate-800/80' : 'border-slate-700/60'}`}
     >
       <div className="text-cyan-400 mt-0.5">{icon}</div>
       <div>
@@ -76,6 +96,9 @@ export default function AdminDashboard() {
   const [minRating, setMinRating] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
+  const [showPlayers, setShowPlayers] = useState(false);
+  const [players, setPlayers] = useState<PlayerRow[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
   const PER_PAGE = 20;
 
   const fetchFeedback = useCallback(async () => {
@@ -111,6 +134,23 @@ export default function AdminDashboard() {
       setStatsLoading(false);
     }
   }, []);
+
+  const fetchPlayers = useCallback(async () => {
+    setPlayersLoading(true);
+    try {
+      const res = await fetch('/api/admin/players');
+      if (!res.ok) return;
+      const data = await res.json();
+      setPlayers(data.players ?? []);
+    } finally {
+      setPlayersLoading(false);
+    }
+  }, []);
+
+  const togglePlayers = () => {
+    if (!showPlayers && players.length === 0) fetchPlayers();
+    setShowPlayers((v) => !v);
+  };
 
   useEffect(() => { fetchFeedback(); }, [fetchFeedback]);
   useEffect(() => { if (tab === 'stats') fetchStats(); }, [tab, fetchStats]);
@@ -317,11 +357,66 @@ export default function AdminDashboard() {
                   <div>
                     <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Players & Scores</h2>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <StatCard icon={<Users className="w-5 h-5" />} label="Players" value={stats.players.total} />
+                      <StatCard icon={<Users className="w-5 h-5" />} label="Players" value={stats.players.total} sub="tap to view" onClick={togglePlayers} active={showPlayers} />
                       <StatCard icon={<Trophy className="w-5 h-5" />} label="Top Score" value={stats.scores.top_score.toLocaleString()} />
                       <StatCard icon={<Star className="w-5 h-5" />} label="Avg Score" value={stats.scores.avg_score.toLocaleString()} />
                       <StatCard icon={<BarChart3 className="w-5 h-5" />} label="Avg Level" value={stats.scores.avg_level} sub={`${stats.scores.total} scores`} />
                     </div>
+
+                    <AnimatePresence>
+                      {showPlayers && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="bg-slate-900/70 border border-slate-700/60 rounded-2xl overflow-hidden mt-1">
+                            <div className="px-5 py-3 border-b border-slate-700/60 flex items-center justify-between">
+                              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Player Rankings</span>
+                              <button onClick={fetchPlayers} className="p-1 text-slate-600 hover:text-slate-300 transition-colors rounded">
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            {playersLoading ? (
+                              <div className="flex justify-center py-10">
+                                <div className="w-6 h-6 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            ) : players.length === 0 ? (
+                              <div className="text-center py-10 text-slate-500 text-sm">No players yet.</div>
+                            ) : (
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-700/40">
+                                      <th className="px-4 py-2.5 text-left w-10">#</th>
+                                      <th className="px-4 py-2.5 text-left">Player</th>
+                                      <th className="px-4 py-2.5 text-right">Score</th>
+                                      <th className="px-4 py-2.5 text-center">Level</th>
+                                      <th className="px-4 py-2.5 text-center">Country</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {players.map((p, i) => (
+                                      <tr key={p.alias} className="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">
+                                        <td className="px-4 py-3 text-slate-500 font-mono">{i + 1}</td>
+                                        <td className="px-4 py-3 font-bold text-white">{p.alias}</td>
+                                        <td className="px-4 py-3 text-right font-mono text-cyan-400">{p.score.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-center text-slate-400">{p.level_reached}</td>
+                                        <td className="px-4 py-3 text-center" title={p.country ?? 'Unknown'}>
+                                          <span className="text-lg">{countryFlag(p.country)}</span>
+                                          {p.country && <span className="text-xs text-slate-600 ml-1">{p.country}</span>}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   <div>
